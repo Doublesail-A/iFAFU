@@ -13,6 +13,7 @@ import cn.ifafu.ifafu.entity.Score
 import cn.ifafu.ifafu.ui.view.adapter.ScoreAdapter.ScoreViewHolder
 import cn.ifafu.ifafu.util.ColorUtils
 import cn.ifafu.ifafu.util.GlobalLib
+import com.google.android.material.color.MaterialColors
 
 class ScoreAdapter(private val mContext: Context) : RecyclerView.Adapter<ScoreViewHolder>() {
 
@@ -36,7 +37,13 @@ class ScoreAdapter(private val mContext: Context) : RecyclerView.Adapter<ScoreVi
             holder.tvScore.text = GlobalLib.formatFloat(calcScore, 2)
         }
         if (calcScore >= 60 || calcScore == Score.FREE_COURSE) {
-            holder.tvScore.setTextColor(ColorUtils.getColor(mContext, R.color.ifafu_blue))
+            holder.tvScore.setTextColor(
+                MaterialColors.getColor(
+                    mContext,
+                    com.google.android.material.R.attr.colorPrimary,
+                    ColorUtils.getColor(mContext, R.color.ifafu_blue)
+                )
+            )
         } else {
             holder.tvScore.setTextColor(ColorUtils.getColor(mContext, R.color.red))
         }

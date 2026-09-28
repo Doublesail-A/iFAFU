@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:id="@+id/group_services">
+        <item
+            android:id="@+id/menu_web"
+            android:icon="@drawable/ic_m3_language"
+            android:title="网页模式" />
+        <item
+            android:id="@+id/menu_boya"
+            android:icon="@drawable/ic_m3_smart_toy"
+            android:title="校园百事通" />
+        <item
+            android:id="@+id/menu_comment"
+            android:icon="@drawable/ic_m3_event_note"
+            android:title="一键评教" />
+    </group>
+    <group android:id="@+id/group_app">
+        <item
+            android:id="@+id/menu_user_management"
+            android:icon="@drawable/ic_m3_person"
+            android:title="账号管理" />
+        <item
+            android:id="@+id/menu_setting"
+            android:icon="@drawable/ic_m3_settings"
+            android:title="软件设置" />
+        <item
+            android:id="@+id/menu_upgrade"
+            android:icon="@drawable/ic_m3_update"
+            android:title="检查更新" />
+        <item
+            android:id="@+id/menu_about_ifafu"
+            android:icon="@drawable/ic_m3_info"
+            android:title="关于 iFAFU" />
+    </group>
+</menu>

@@ -51,12 +51,10 @@ class MainViewModel @Inject constructor(
         addSource(_user) {
             if (it == null) return@addSource
             viewModelScope.launch {
-                val theme = globalSettingRepository.get(it.account).theme
-                if (theme == GlobalSetting.THEME_OLD) {
-                    this@apply.postValue(MainTheme.OLD)
-                } else {
-                    this@apply.postValue(MainTheme.NEW)
-                }
+                // The legacy home is retired; palette selection is handled by
+                // ThemeManager while the home screen always uses the MD3 layout.
+                globalSettingRepository.get(it.account)
+                this@apply.postValue(MainTheme.NEW)
             }
         }
     }
@@ -83,12 +81,8 @@ class MainViewModel @Inject constructor(
 
     fun updateSetting() {
         viewModelScope.launch {
-            val theme = globalSettingRepository.get().theme
-            if (theme == GlobalSetting.THEME_OLD) {
-                _theme.postValue(MainTheme.OLD)
-            } else {
-                _theme.postValue(MainTheme.NEW)
-            }
+            globalSettingRepository.get()
+            _theme.postValue(MainTheme.NEW)
         }
     }
 
@@ -159,6 +153,7 @@ class MainViewModel @Inject constructor(
                 is Resource.Failure -> {
                     this@MainViewModel.toastInMain(res.message)
                 }
+                is Resource.Loading -> Unit
             }
         }
     }

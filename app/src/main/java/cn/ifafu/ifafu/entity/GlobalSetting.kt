@@ -9,7 +9,7 @@ import java.util.*
 class GlobalSetting {
     @PrimaryKey
     var account: String = ""
-    var theme = THEME_NEW
+    var theme = THEME_SYSTEM
 
     @Ignore
     constructor(account: String) {
@@ -31,7 +31,24 @@ class GlobalSetting {
     }
 
     companion object {
-        const val THEME_NEW = 0
-        const val THEME_OLD = 1
+        /** Follow the device's light/dark mode and dynamic color source. */
+        const val THEME_SYSTEM = 0
+        /** Legado-inspired green tonal palette. */
+        const val THEME_GREEN = 1
+        /** Legado-inspired blue tonal palette. */
+        const val THEME_BLUE = 2
+        /** Legado-inspired rose tonal palette. */
+        const val THEME_ROSE = 3
+
+        /** Generate the Material 3 palette from the next course's classic timetable color. */
+        const val THEME_COURSE = 4
+        /** Palette extracted from the custom timetable wallpaper by Google's quantizer. */
+        const val THEME_WALLPAPER = 5
+
+        // Kept as migration aliases for data written by the public 1.4.x build.
+        @Deprecated("Use THEME_SYSTEM")
+        const val THEME_NEW = THEME_SYSTEM
+        @Deprecated("Use THEME_GREEN")
+        const val THEME_OLD = THEME_GREEN
     }
 }

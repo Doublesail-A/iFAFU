@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/fragment_home"
+        android:icon="@drawable/ic_m3_home"
+        android:title="主页" />
+    <item
+        android:id="@+id/nav_score"
+        android:icon="@drawable/ic_m3_grade"
+        android:title="成绩" />
+    <item
+        android:id="@+id/nav_elective"
+        android:icon="@drawable/ic_m3_menu_book"
+        android:title="选修" />
+</menu>

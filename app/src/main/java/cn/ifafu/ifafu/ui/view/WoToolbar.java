@@ -21,6 +21,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 import androidx.appcompat.widget.AppCompatImageButton;
 import androidx.appcompat.widget.AppCompatTextView;
+import com.google.android.material.color.MaterialColors;
 
 import cn.ifafu.ifafu.R;
 import cn.ifafu.ifafu.util.DensityUtils;
@@ -83,6 +84,7 @@ public class WoToolbar extends RelativeLayout {
         } else {
             setNavigationIcon(context.getDrawable(R.drawable.ic_back));
         }
+        applyMaterialColors();
         setNavigationOnClickListener(v -> {
             Activity activity = GlobalLib.getActivityFromView(WoToolbar.this);
             if (activity != null) {
@@ -240,6 +242,7 @@ public class WoToolbar extends RelativeLayout {
         }
         if (mNavButtonView != null) {
             mNavButtonView.setImageDrawable(icon);
+            applyMaterialColors();
         }
     }
 
@@ -259,6 +262,23 @@ public class WoToolbar extends RelativeLayout {
             int dp4 = DensityUtils.dp2px(getContext(), 4);
             mNavButtonView.setPadding(dp4, dp4, dp4, dp4);
             mNavButtonView.setLayoutParams(lp);
+        }
+    }
+
+    /** Keep this legacy toolbar visually aligned with the Material 3 surfaces. */
+    private void applyMaterialColors() {
+        int onSurface = MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurface,
+                android.graphics.Color.BLACK);
+        if (mNavButtonView != null) {
+            mNavButtonView.setImageTintList(ColorStateList.valueOf(onSurface));
+            mNavButtonView.setColorFilter(null);
+        }
+        if (mTitleTextView != null) {
+            mTitleTextView.setTextColor(onSurface);
+        }
+        if (mSubtitleTextView != null) {
+            mSubtitleTextView.setTextColor(MaterialColors.getColor(this,
+                    com.google.android.material.R.attr.colorOnSurfaceVariant, onSurface));
         }
     }
 

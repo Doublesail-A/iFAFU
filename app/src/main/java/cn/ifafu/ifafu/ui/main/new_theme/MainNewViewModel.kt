@@ -10,7 +10,6 @@ import cn.ifafu.ifafu.bean.vo.Resource
 import cn.ifafu.ifafu.bean.vo.Weather
 import cn.ifafu.ifafu.domain.course.LoadNextCourseUseCase
 import cn.ifafu.ifafu.repository.ExamRepository
-import cn.ifafu.ifafu.repository.IfUserRepository
 import cn.ifafu.ifafu.repository.OtherRepository
 import cn.ifafu.ifafu.repository.TimetableRepository
 import cn.ifafu.ifafu.ui.view.timeline.TimeEvent
@@ -19,7 +18,6 @@ import cn.ifafu.ifafu.util.toLiveData
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
@@ -32,7 +30,6 @@ import kotlin.collections.ArrayList
 @HiltViewModel
 class MainNewViewModel @Inject constructor(
     private val nextCourseUseCase: LoadNextCourseUseCase,
-    private val ifafuUserRepository: IfUserRepository,
     private val timetableRepository: TimetableRepository,
     private val examRepository: ExamRepository,
     private val otherRepository: OtherRepository
@@ -44,8 +41,6 @@ class MainNewViewModel @Inject constructor(
 
     private val _nextCourse = MediatorLiveData<Resource<NextCourseVO>>()
     val nextCourse = _nextCourse.toLiveData()
-
-    val isIFAFUUser = MutableLiveData<Boolean>()
 
     fun updateTimeAxis() {
         viewModelScope.launch {
@@ -90,17 +85,6 @@ class MainNewViewModel @Inject constructor(
                 }
                 .collectLatest {
                     weather.postValue(it)
-                }
-        }
-    }
-
-    fun updateIFAFUUser() {
-        viewModelScope.launch {
-            ifafuUserRepository.userInfo()
-                .flowOn(Dispatchers.IO)
-                .catch { Timber.e(it) }
-                .collect {
-                    isIFAFUUser.postValue(it != null)
                 }
         }
     }

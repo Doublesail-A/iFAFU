@@ -39,8 +39,7 @@
             android:launchMode="singleTask" />
         <activity
             android:name=".ui.login.LoginActivity"
-            android:launchMode="singleTask"
-            android:theme="@style/AppTheme.Login" />
+            android:launchMode="singleTask" />
         <activity
             android:name=".ui.examlist.ExamListActivity"
             android:launchMode="singleTask" />
@@ -53,10 +52,6 @@
         <activity
             android:name=".ui.setting.SettingActivity"
             android:launchMode="singleTask" />
-        <activity
-            android:name=".ui.login2.LoginActivity"
-            android:launchMode="singleTask"
-            android:theme="@style/AppTheme.Login" />
         <activity
             android:name=".ui.elective.ElectiveActivity"
             android:launchMode="singleTask" />
@@ -86,37 +81,10 @@
             android:name=".ui.timetable_setting.TimetableSettingActivity"
             android:launchMode="singleTask" />
         <activity
-            android:name=".ui.feedback.FeedbackActivity"
-            android:launchMode="singleTask" />
-        <activity
-            android:name=".ui.feedback.item.FeedbackItemActivity"
-            android:launchMode="singleTask" />
-        <activity
-            android:name=".ui.information.InformationActivity"
-            android:launchMode="singleTask" />
-        <activity
-            android:name=".ui.upload.UploadActivity"
-            android:launchMode="singleTask" />
-        <activity
-            android:name=".ui.center.CenterActivity"
-            android:launchMode="singleTask" />
-        <activity
-            android:name=".ui.informationexamine.ExamineActivity"
-            android:launchMode="singleTask" />
-        <activity
-            android:name=".ui.upload.ShowPictureActivity"
-            android:launchMode="singleTask" />
-        <activity
             android:name="com.tencent.bugly.beta.ui.BetaActivity"
             android:configChanges="keyboardHidden|orientation|screenSize|locale"
             android:launchMode="singleTask"
             android:theme="@android:style/Theme.Translucent" />
-        <activity
-            android:name="com.yalantis.ucrop.UCropActivity"
-            android:launchMode="singleTask"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
-
         <!--        <meta-data-->
         <!--            android:name="BUGLY_APP_CHANNEL"-->
         <!--            android:value="${channel}" />-->

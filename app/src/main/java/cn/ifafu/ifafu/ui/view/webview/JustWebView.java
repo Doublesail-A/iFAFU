@@ -58,11 +58,7 @@ public class JustWebView extends WebView {
         settings.setBuiltInZoomControls(true);
         settings.setLoadsImagesAutomatically(true);
         settings.setDomStorageEnabled(true);
-        settings.setAppCacheEnabled(true);
         settings.setAllowFileAccessFromFileURLs(true);
-        // 缓存
-        String cachePath = getContext().getDir("cache", Context.MODE_PRIVATE).getPath();
-        settings.setAppCachePath(cachePath);
     }
 
     public OnTitleChangedListener getOnTitleChangedListener() {

@@ -2,9 +2,7 @@ package cn.ifafu.ifafu.ui.examlist
 
 import android.os.Bundle
 import androidx.activity.viewModels
-import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
-import androidx.recyclerview.widget.DividerItemDecoration
 import cn.ifafu.ifafu.R
 import cn.ifafu.ifafu.ui.common.BaseActivity
 import cn.ifafu.ifafu.bean.vo.Resource
@@ -35,20 +33,21 @@ class ExamListActivity : BaseActivity() {
         setLightUiBar()
         binding = bind(R.layout.exam_list_acitivty)
 
-        binding.btnRefresh.setOnClickListener { mViewModel.refresh() }
         binding.tbExam.setNavigationOnClickListener { finish() }
-        binding.tbExam.setSubtitleClickListener {
+        binding.tbExam.setOnMenuItemClickListener {
+            if (it.itemId == R.id.menu_exam_refresh) {
+                mViewModel.refresh()
+                true
+            } else {
+                false
+            }
+        }
+        binding.tvExamSemester.setOnClickListener {
             mViewModel.semester.value?.run {
                 mSemesterOptionPicker.setSemester(this)
                 mSemesterOptionPicker.show()
             }
         }
-        binding.tbExam.setSubtitleDrawablesRelative(
-            null,
-            null,
-            ContextCompat.getDrawable(this, R.drawable.ic_down_little),
-            null
-        )
 
         initList()
 
@@ -77,12 +76,6 @@ class ExamListActivity : BaseActivity() {
     }
 
     private fun initList() {
-        // 设置分割线
-        val dividerItemDecoration = DividerItemDecoration(this, DividerItemDecoration.VERTICAL)
-        val divider = ContextCompat.getDrawable(this, R.drawable.shape_divider)!!
-        dividerItemDecoration.setDrawable(divider)
-        binding.rvExam.addItemDecoration(dividerItemDecoration)
-        // 设置Adapter
         binding.rvExam.adapter = mExamAdapter
     }
 

@@ -3,7 +3,6 @@ package cn.ifafu.ifafu.ui.timetable_item
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.os.Bundle
 import android.view.View
 import androidx.core.view.isVisible
@@ -19,6 +18,8 @@ import cn.ifafu.ifafu.util.DataUtils
 import com.bigkoo.pickerview.builder.OptionsPickerBuilder
 import com.bigkoo.pickerview.view.OptionsPickerView
 import com.blankj.utilcode.util.KeyboardUtils
+import com.google.android.material.color.MaterialColors
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -33,14 +34,20 @@ class TimetableItemActivity : BaseActivity(), View.OnClickListener {
             course.weekday = options1 + 1
             course.beginNode = options2 + 1
             course.nodeLength = options3 + 1
-            val timeText = "${weeks[options1]}  第${options2 + 1}节 ~ 第${options2 + options3 + 1}节"
+            val timeText = "${weeks[options1]} · 第${options2 + 1}–${options2 + options3 + 1}节"
             binding.etCourseTime.text = timeText
         }
             .setOutSideCancelable(false)
             .setCancelText("取消")
             .setSubmitText("确定")
             .setTitleText("请选择时间")
-            .setTitleColor(Color.parseColor("#157efb"))
+            .setTitleColor(
+                MaterialColors.getColor(
+                    this,
+                    com.google.android.material.R.attr.colorPrimary,
+                    0xFF6750A4.toInt(),
+                ),
+            )
             .setTitleSize(13)
             .build()
     }
@@ -145,7 +152,7 @@ class TimetableItemActivity : BaseActivity(), View.OnClickListener {
         binding.toolBar.setOnMenuItemClickListener {
             when (it.itemId) {
                 R.id.timetable_menu_edit -> editMode(true)
-                R.id.timetable_menu_delete -> delete()
+                R.id.timetable_menu_delete -> confirmDelete()
                 R.id.timetable_menu_save -> save()
             }
             true
@@ -153,7 +160,8 @@ class TimetableItemActivity : BaseActivity(), View.OnClickListener {
     }
 
     private fun initCourseView(it: NewCourse) {
-        val timeText = "${weeks[it.weekday - 1]}  第${it.beginNode} ~ ${it.endNode}节"
+        val weekday = it.weekday.coerceIn(1, 7)
+        val timeText = "${weeks[weekday - 1]} · 第${it.beginNode}–${it.endNode}节"
         binding.tvCourseTime.text = timeText
         binding.tvCourseName.text = it.name
         binding.tvCourseTeacher.text = it.teacher
@@ -194,16 +202,15 @@ class TimetableItemActivity : BaseActivity(), View.OnClickListener {
 
     private fun editMode(edit: Boolean) {
         mWeekAdapter.editMode = edit
-
-        binding.tvCourseAddress.isVisible = !edit
-        binding.tvCourseTeacher.isVisible = !edit
-        binding.tvCourseName.isVisible = !edit
-        binding.tvCourseTime.isVisible = !edit
-
-        binding.etCourseName.isVisible = edit
-        binding.etCourseAddress.isVisible = edit
-        binding.etCourseTeacher.isVisible = edit
-        binding.etCourseTime.isVisible = edit
+        binding.layoutCourseRead.isVisible = !edit
+        binding.layoutCourseEdit.isVisible = edit
+        binding.tvWeeksHeading.text = if (edit) "选择上课周次" else "上课周次"
+        binding.tvWeeksSupporting.text = if (edit) "点按周次可添加或移除" else "课程出现的教学周"
+        binding.toolBar.title = when {
+            enterType == ADD && edit -> "添加课程"
+            edit -> "编辑课程"
+            else -> "课程详情"
+        }
 
         binding.toolBar.menu.findItem(R.id.timetable_menu_save)?.isVisible = edit
         binding.toolBar.menu.findItem(R.id.timetable_menu_delete)?.isVisible = !edit
@@ -217,6 +224,14 @@ class TimetableItemActivity : BaseActivity(), View.OnClickListener {
     }
 
     private fun save() {
+        if (binding.etCourseName.text.isNullOrBlank()) {
+            snackbar("请填写课程名称")
+            return
+        }
+        if (mWeekAdapter.weekList.isEmpty()) {
+            snackbar("请至少选择一个上课周次")
+            return
+        }
         lifecycleScope.launch {
             course.weeks = mWeekAdapter.weekList
             course.name = binding.etCourseName.text.toString()
@@ -235,7 +250,16 @@ class TimetableItemActivity : BaseActivity(), View.OnClickListener {
         }
     }
 
-    private fun delete() {
+    private fun confirmDelete() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("删除这门课程？")
+            .setMessage("删除后将从当前课表中移除。")
+            .setNegativeButton("取消", null)
+            .setPositiveButton("删除") { _, _ -> deleteCourse() }
+            .show()
+    }
+
+    private fun deleteCourse() {
         lifecycleScope.launch {
             repository.deleteCourse(course)
             showToast("删除成功")

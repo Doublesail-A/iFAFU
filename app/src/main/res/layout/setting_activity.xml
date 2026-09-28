@@ -8,23 +8,148 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="?attr/colorSurface"
         android:orientation="vertical">
 
-        <cn.ifafu.ifafu.ui.view.WoToolbar
+        <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/tb_setting"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            app:elevation="4dp"
-            app:title="@string/title_setting" />
+            android:layout_height="64dp"
+            android:background="?attr/colorSurface"
+            android:title="外观"
+            android:titleTextColor="?attr/colorOnSurface"
+            app:navigationIcon="@drawable/ic_m3_arrow_back"
+            app:navigationIconTint="?attr/colorOnSurface"
+            app:titleCentered="false" />
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rv_setting"
+        <androidx.core.widget.NestedScrollView
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical"
-            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-            tools:listitem="@layout/setting_item_checkbox" />
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:fillViewport="true">
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingStart="20dp"
+                android:paddingTop="28dp"
+                android:paddingEnd="20dp"
+                android:paddingBottom="32dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="选择你的 iFAFU 配色"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="28sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="所有页面都会使用同一套 Material 3 色彩角色。"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="15sp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_theme"
+                    android:layout_width="match_parent"
+                    android:layout_height="104dp"
+                    android:layout_marginTop="32dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    app:cardBackgroundColor="?attr/colorPrimaryContainer"
+                    app:cardCornerRadius="28dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
+
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:paddingStart="20dp"
+                        android:paddingEnd="16dp">
+
+                        <ImageView
+                            android:id="@+id/icon_theme"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:background="@drawable/shape_m3_menu_item"
+                            android:padding="12dp"
+                            android:src="@drawable/ic_m3_palette"
+                            android:tint="?attr/colorOnPrimaryContainer"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent"
+                            tools:ignore="ContentDescription" />
+
+                        <TextView
+                            android:id="@+id/tv_theme_title"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="主题配色"
+                            android:textColor="?attr/colorOnPrimaryContainer"
+                            android:textSize="17sp"
+                            app:layout_constraintBottom_toTopOf="@id/tv_theme_value"
+                            app:layout_constraintEnd_toStartOf="@id/theme_chevron"
+                            app:layout_constraintStart_toEndOf="@id/icon_theme"
+                            app:layout_constraintTop_toTopOf="parent"
+                            app:layout_constraintVertical_chainStyle="packed" />
+
+                        <TextView
+                            android:id="@+id/tv_theme_value"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:layout_marginTop="4dp"
+                            android:textColor="?attr/colorOnPrimaryContainer"
+                            android:textSize="14sp"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintEnd_toStartOf="@id/theme_chevron"
+                            app:layout_constraintStart_toEndOf="@id/icon_theme"
+                            app:layout_constraintTop_toBottomOf="@id/tv_theme_title"
+                            tools:text="樱粉 · Material 3 色阶" />
+
+                        <ImageView
+                            android:id="@+id/theme_chevron"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:padding="8dp"
+                            android:src="@drawable/ic_m3_chevron_right"
+                            android:tint="?attr/colorOnPrimaryContainer"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintTop_toTopOf="parent"
+                            tools:ignore="ContentDescription" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    app:cardBackgroundColor="?attr/colorTertiaryContainer"
+                    app:cardCornerRadius="24dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingStart="20dp"
+                        android:paddingTop="18dp"
+                        android:paddingEnd="20dp"
+                        android:paddingBottom="18dp"
+                        android:text="随课程变化会呼应下一节课的颜色。更换课表背景后，壁纸取色会自动为整个应用配色。也可以选择系统配色或竹青、晴空、樱粉。"
+                        android:textColor="?attr/colorOnTertiaryContainer"
+                        android:textSize="14sp" />
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
     </LinearLayout>
-
 </layout>

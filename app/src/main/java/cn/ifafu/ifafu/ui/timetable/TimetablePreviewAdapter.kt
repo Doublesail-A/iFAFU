@@ -8,7 +8,8 @@ import cn.ifafu.ifafu.R
 import cn.ifafu.ifafu.bean.vo.TimetablePreviewSource
 import cn.ifafu.ifafu.databinding.TimetableItemPreviewBinding
 import cn.ifafu.ifafu.ui.view.TimetablePreviewView
-import com.bumptech.glide.Glide
+import com.google.android.material.card.MaterialCardView
+import com.google.android.material.color.MaterialColors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -70,15 +71,23 @@ class TimetablePreviewAdapter(
         val titleTv: TextView = binding.titleTv
         val previewView: TimetablePreviewView = binding.previewImage
 
-        init {
-            Glide.with(itemView)
-                .load(R.drawable.bg_timetable)
-                .into(previewView)
-        }
-
         fun select(select: Boolean) {
             titleTv.paint.isFakeBoldText = select
             titleTv.invalidate()
+            (itemView as? MaterialCardView)?.apply {
+                setCardBackgroundColor(MaterialColors.getColor(
+                    this,
+                    if (select) com.google.android.material.R.attr.colorPrimaryContainer
+                    else com.google.android.material.R.attr.colorSurfaceVariant,
+                    0xFFE7E0EC.toInt(),
+                ))
+            }
+            titleTv.setTextColor(MaterialColors.getColor(
+                titleTv,
+                if (select) com.google.android.material.R.attr.colorOnPrimaryContainer
+                else com.google.android.material.R.attr.colorOnSurfaceVariant,
+                0xFF49454F.toInt(),
+            ))
         }
     }
 }

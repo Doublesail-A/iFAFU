@@ -103,7 +103,6 @@ class MainOldFragment : BaseFragment(R.layout.main_old_fragment), OnMenuItemClic
                 MenuVO(R.id.menu_schedule, R.drawable.menu_syllabus_white, "我的课表"),
                 MenuVO(R.id.menu_web, R.drawable.menu_web_white, "网页模式"),
 //                MenuVO(R.id.menu_repair, R.drawable.main_old_tabs_repair, "报修服务"),
-                MenuVO(R.id.menu_information, R.drawable.ic_information_white, "信息平台"),
                 MenuVO(R.id.menu_boya, R.drawable.ic_robot_white, "校园百事通")
             ),
             "软件设置" to mutableListOf(
@@ -113,7 +112,6 @@ class MainOldFragment : BaseFragment(R.layout.main_old_fragment), OnMenuItemClic
             "关于软件" to mutableListOf(
                 MenuVO(R.id.menu_upgrade, R.drawable.menu_update_white, "检查更新"),
                 MenuVO(R.id.menu_about_ifafu, R.drawable.main_old_tabs_about, "关于iFAFU"),
-                MenuVO(R.id.menu_feedback, R.drawable.ic_feedback_white, "反馈问题")
             )
         )
         MenuMaker.make {

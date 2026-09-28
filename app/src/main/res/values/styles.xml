@@ -66,7 +66,8 @@
 
     <!--WToolbarStyle-->
     <style name="woToolbarStyle">
-        <item name="android:background">@color/white</item>
+        <item name="android:background">?attr/colorSurface</item>
+        <item name="android:elevation">2dp</item>
         <item name="android:title">123</item>
         <item name="navigationIcon">@drawable/ic_back</item>
         <item name="titleTextAppearance">@style/titleTextAppearance</item>
@@ -74,12 +75,13 @@
     </style>
 
     <style name="titleTextAppearance">
-        <item name="android:textColor">#222222</item>
-        <item name="android:textSize">20sp</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:textSize">22sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
     </style>
 
     <style name="subtitleTextAppearance">
-        <item name="android:textColor">#666666</item>
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
         <item name="android:textSize">14sp</item>
     </style>
 
@@ -100,8 +102,26 @@
         <item name="android:layout_weight">1</item>
         <item name="android:gravity">center</item>
         <item name="android:textSize">10sp</item>
-        <item name="android:textColor">#555</item>
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
         <item name="android:drawablePadding">2dp</item>
+        <item name="android:minHeight">64dp</item>
+        <item name="android:paddingStart">8dp</item>
+        <item name="android:paddingEnd">8dp</item>
+        <item name="android:foreground">?attr/selectableItemBackgroundBorderless</item>
+    </style>
+
+    <style name="DrawerNavItem">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:layout_marginTop">4dp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:drawablePadding">20dp</item>
+        <item name="android:paddingStart">12dp</item>
+        <item name="android:paddingEnd">12dp</item>
+        <item name="android:textColor">?attr/colorOnPrimary</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:drawableTint">?attr/colorOnPrimary</item>
+        <item name="android:foreground">?attr/selectableItemBackgroundBorderless</item>
     </style>
 
     <style name="Information.Widget.Upload.TextInputLayout" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox" />

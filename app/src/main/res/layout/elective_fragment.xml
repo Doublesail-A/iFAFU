@@ -4,87 +4,136 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <data>
-
         <variable
             name="vm"
             type="cn.ifafu.ifafu.ui.elective.ElectiveViewModel" />
-
     </data>
 
-    <LinearLayout
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:background="?attr/colorSurface"
+        android:clipToPadding="false"
+        android:fillViewport="true">
 
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/tb_elective"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:background="@color/white"
-            android:elevation="4dp"
-            app:menu="@menu/elective"
-            app:navigationContentDescription="@string/back"
-            app:navigationIcon="@drawable/ic_back"
-            app:title="@string/elective" />
+            android:layout_height="wrap_content"
+            android:animateLayoutChanges="true"
+            android:orientation="vertical"
+            android:paddingTop="18dp"
+            android:paddingBottom="28dp">
 
-        <ScrollView
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
-
-            <LinearLayout
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:animateLayoutChanges="true"
-                android:orientation="vertical"
-                android:paddingTop="4dp">
+                android:layout_marginStart="20dp"
+                android:layout_marginEnd="20dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="选修学分"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="28sp" />
 
-                <cn.ifafu.ifafu.ui.elective.ElectiveView
-                    android:id="@+id/e_total"
-                    elective="@{vm.total}"
-                    visibleGoneWhen="@{vm.total == null}"
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="20dp"
+                android:layout_marginTop="5dp"
+                android:layout_marginEnd="20dp"
+                android:text="按类别核对已修课程与培养方案要求"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="15sp" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="20dp"
+                android:layout_marginTop="20dp"
+                android:layout_marginEnd="20dp"
+                app:cardBackgroundColor="?attr/colorSecondaryContainer"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp">
+
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    tools:visibility="visible" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="18dp">
 
-                <cn.ifafu.ifafu.ui.elective.ElectiveView
-                    android:id="@+id/e_zrkx"
-                    elective="@{vm.zrkx}"
-                    visibleGoneWhen="@{vm.zrkx == null}"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_m3_menu_book"
+                        app:tint="?attr/colorOnSecondaryContainer" />
 
-                <cn.ifafu.ifafu.ui.elective.ElectiveView
-                    android:id="@+id/e_rwsk"
-                    elective="@{vm.rwsk}"
-                    visibleGoneWhen="@{vm.rwsk == null}"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:layout_weight="1"
+                        android:text="展开类别可查看具体课程，点按课程可进入完整成绩详情。"
+                        android:textColor="?attr/colorOnSecondaryContainer"
+                        android:textSize="14sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
-                <cn.ifafu.ifafu.ui.elective.ElectiveView
-                    android:id="@+id/e_wxsy"
-                    elective="@{vm.wxsy}"
-                    visibleGoneWhen="@{vm.wxsy == null}"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="20dp"
+                android:layout_marginTop="24dp"
+                android:layout_marginEnd="20dp"
+                android:layout_marginBottom="8dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="学分分类"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="20sp" />
 
-                <cn.ifafu.ifafu.ui.elective.ElectiveView
-                    android:id="@+id/e_cxcy"
-                    elective="@{vm.cxcy}"
-                    visibleGoneWhen="@{vm.cxcy == null}"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+            <cn.ifafu.ifafu.ui.elective.ElectiveView
+                android:id="@+id/e_total"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                elective="@{vm.total}"
+                tools:visibility="visible"
+                visibleGoneWhen="@{vm.total == null}" />
 
-                <cn.ifafu.ifafu.ui.elective.ElectiveView
-                    android:id="@+id/e_ysty"
-                    elective="@{vm.ysty}"
-                    visibleGoneWhen="@{vm.ysty == null}"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+            <cn.ifafu.ifafu.ui.elective.ElectiveView
+                android:id="@+id/e_zrkx"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                elective="@{vm.zrkx}"
+                visibleGoneWhen="@{vm.zrkx == null}" />
 
-            </LinearLayout>
+            <cn.ifafu.ifafu.ui.elective.ElectiveView
+                android:id="@+id/e_rwsk"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                elective="@{vm.rwsk}"
+                visibleGoneWhen="@{vm.rwsk == null}" />
 
-        </ScrollView>
+            <cn.ifafu.ifafu.ui.elective.ElectiveView
+                android:id="@+id/e_wxsy"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                elective="@{vm.wxsy}"
+                visibleGoneWhen="@{vm.wxsy == null}" />
 
-    </LinearLayout>
+            <cn.ifafu.ifafu.ui.elective.ElectiveView
+                android:id="@+id/e_cxcy"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                elective="@{vm.cxcy}"
+                visibleGoneWhen="@{vm.cxcy == null}" />
 
+            <cn.ifafu.ifafu.ui.elective.ElectiveView
+                android:id="@+id/e_ysty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                elective="@{vm.ysty}"
+                visibleGoneWhen="@{vm.ysty == null}" />
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
 </layout>

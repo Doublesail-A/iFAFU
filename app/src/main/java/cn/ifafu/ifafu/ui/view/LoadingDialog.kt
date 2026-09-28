@@ -1,16 +1,13 @@
 package cn.ifafu.ifafu.ui.view
 
 import android.content.Context
-import android.graphics.Color
 import android.view.View
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.annotation.StringRes
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LiveData
-import androidx.lifecycle.Observer
 import cn.ifafu.ifafu.R
-import com.github.ybq.android.spinkit.style.CubeGrid
 
 /**
  * 将Dialog包装起来，通过延迟初始化，防止可出现在OnCreate之前初始化导致的崩溃
@@ -45,11 +42,7 @@ class LoadingDialog constructor(context: Context, text: String? = null) {
             setContentView(R.layout.dialog_progress)
             loadingTV = findViewById(R.id.tv_progress_text)
             setText(text)
-            findViewById<ProgressBar>(R.id.pb_progress).apply {
-                indeterminateDrawable = CubeGrid().apply {
-                    color = Color.WHITE
-                }
-            }
+            findViewById<ProgressBar>(R.id.pb_progress)
         }
 
         fun setText(text: String?) {

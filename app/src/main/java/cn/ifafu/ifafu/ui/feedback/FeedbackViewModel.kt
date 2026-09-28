@@ -47,6 +47,7 @@ class FeedbackViewModel @Inject constructor(
                     is Resource.Failure -> {
                         toastInMain(res.message)
                     }
+                    is Resource.Loading -> Unit
                 }
             }
         }

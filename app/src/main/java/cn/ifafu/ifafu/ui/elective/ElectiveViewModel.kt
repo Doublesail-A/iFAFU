@@ -46,6 +46,7 @@ class ElectiveViewModel @Inject constructor(
                             loading.postValue(null)
                             return@launch
                         }
+                        is Resource.Loading -> return@launch
                     }
                 }
                 //过滤特殊情况：入学英语分级

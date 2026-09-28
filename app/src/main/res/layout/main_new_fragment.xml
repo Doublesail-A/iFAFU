@@ -16,7 +16,7 @@
         android:id="@+id/drawer_main"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@drawable/main_left_bg"
+        android:background="@drawable/shape_m3_primary_container"
         android:orientation="vertical">
 
         <include
@@ -27,7 +27,7 @@
         <cn.ifafu.ifafu.ui.view.MyLinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@color/white"
+            android:background="?attr/colorSurface"
             android:orientation="vertical">
 
             <include

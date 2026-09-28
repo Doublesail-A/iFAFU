@@ -12,6 +12,8 @@ import cn.ifafu.ifafu.repository.TimetableRepository
 import cn.ifafu.ifafu.ui.common.BaseViewModel
 import cn.ifafu.ifafu.ui.view.timetable.TimetableItem
 import cn.ifafu.ifafu.util.addLivedata
+import cn.ifafu.ifafu.util.TimetableWallpaper
+import cn.ifafu.ifafu.util.CourseSchedule
 import com.blankj.utilcode.util.Utils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -62,6 +64,18 @@ class TimetableViewModel @Inject constructor(
     val timetableSetting = MutableLiveData<SyllabusSetting>()
 
     val background = MutableLiveData<Uri?>()
+    val nextCourseSeed = MutableLiveData<Int>()
+
+    fun refreshCourseThemeSeed() {
+        val opening = openingDay.value ?: return
+        if (!opening.isCurrentTerm) return
+        val setting = timetableSetting.value ?: return
+        val timetable = (timetableVO.value as? Resource.Success)?.data ?: return
+        val courses = timetable.data.flatten().mapNotNull { it.tag as? NewCourse }.distinct()
+        val next = CourseSchedule.nextCourse(courses, opening.getOpeningDay(), setting) ?: return
+        nextCourseSeed.value = CourseColorPalette.forCourses(Utils.getApp(), courses.map { it.name })
+            .seedFor(next.name)
+    }
 
     val message = MutableLiveData<String>()
 
@@ -147,7 +161,7 @@ class TimetableViewModel @Inject constructor(
      */
     fun updateBackground() {
         viewModelScope.launch {
-            val image = File(Utils.getApp().getExternalFilesDir("background"), "syllabus.jpg")
+            val image = TimetableWallpaper.file(Utils.getApp())
             background.value = null
             if (image.exists()) {
                 background.value = Uri.fromFile(image)
@@ -160,10 +174,7 @@ class TimetableViewModel @Inject constructor(
      */
     fun resetBackground() {
         viewModelScope.launch {
-            val image = File(Utils.getApp().getExternalFilesDir("background"), "syllabus.jpg")
-            if (image.exists()) {
-                image.delete()
-            }
+            TimetableWallpaper.clear(Utils.getApp())
             background.value = null
         }
     }

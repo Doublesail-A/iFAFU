@@ -4,13 +4,13 @@
     <!-- rectangle表示为矩形 -->
 
     <!-- 填充的颜色 -->
-    <solid android:color="#00BFFF" />
+    <solid android:color="?attr/colorPrimaryContainer" />
 
     <!-- android:radius 圆角的半径 -->
     <corners
-        android:bottomLeftRadius="0dp"
-        android:bottomRightRadius="8dp"
-        android:topLeftRadius="8dp"
-        android:topRightRadius="8dp" />
+        android:bottomLeftRadius="12dp"
+        android:bottomRightRadius="12dp"
+        android:topLeftRadius="12dp"
+        android:topRightRadius="12dp" />
 
 </shape>

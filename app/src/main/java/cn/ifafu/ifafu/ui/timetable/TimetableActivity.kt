@@ -2,15 +2,13 @@ package cn.ifafu.ifafu.ui.timetable
 
 import android.app.Activity
 import android.content.Intent
-import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
-import android.provider.MediaStore
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
-import android.widget.SeekBar
 import androidx.activity.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback
 import cn.ifafu.ifafu.R
 import cn.ifafu.ifafu.bean.vo.Resource
@@ -28,22 +26,29 @@ import cn.ifafu.ifafu.ui.timetable_item.TimetableItemActivity
 import cn.ifafu.ifafu.ui.timetable_setting.TimetableSettingActivity
 import cn.ifafu.ifafu.ui.view.LoadingDialog
 import cn.ifafu.ifafu.util.ChineseNumbers
+import cn.ifafu.ifafu.util.TimetableWallpaper
+import cn.ifafu.ifafu.util.ThemePreferences
+import cn.ifafu.ifafu.util.ThemeManager
+import cn.ifafu.ifafu.entity.GlobalSetting
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
-import com.gyf.immersionbar.ImmersionBar
-import com.yalantis.ucrop.UCrop
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
 @AndroidEntryPoint
-class TimetableActivity : BaseActivity(), View.OnClickListener, View.OnLongClickListener {
+class TimetableActivity : BaseActivity(), View.OnClickListener {
 
     private val mViewModel: TimetableViewModel by viewModels()
 
     private var mCurrentWeek = 1
+    private var restoredWeek: Int? = null
+    private var themeRefreshPending = false
     private val mTimetablePageAdapter: TimetablePageAdapter by lazy {
         TimetablePageAdapter(
             onItemClickListener = { _, item ->
@@ -65,9 +70,17 @@ class TimetableActivity : BaseActivity(), View.OnClickListener, View.OnLongClick
     private lateinit var binding: TimetableActivityBinding
     private lateinit var contentBinding: TimetableContentBinding
     private lateinit var drawerBinding: TimetableBottomDrawerBinding
+    private val minuteRefresh = object : Runnable {
+        override fun run() {
+            mTimetablePageAdapter.refreshUrgency()
+            mViewModel.refreshCourseThemeSeed()
+            contentBinding.root.postDelayed(this, 60_000L)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        restoredWeek = savedInstanceState?.getInt("visible_week")
         binding = TimetableActivityBinding.inflate(layoutInflater)
         contentBinding = binding.content
         drawerBinding = binding.drawer
@@ -78,11 +91,36 @@ class TimetableActivity : BaseActivity(), View.OnClickListener, View.OnLongClick
         initViewModel()
     }
 
+    override fun onResume() {
+        super.onResume()
+        contentBinding.root.removeCallbacks(minuteRefresh)
+        mTimetablePageAdapter.refreshUrgency()
+        contentBinding.root.postDelayed(minuteRefresh, 60_000L)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putInt("visible_week", contentBinding.viewPager.currentItem)
+        super.onSaveInstanceState(outState)
+    }
+
+    override fun onPause() {
+        contentBinding.root.removeCallbacks(minuteRefresh)
+        super.onPause()
+    }
+
     private fun initViewModel() {
         mViewModel.message.observe(this, { snackbar(it) })
         mViewModel.timetableSetting.observe(this, { setSyllabusSetting(it) })
+        mViewModel.nextCourseSeed.observe(this) { seed ->
+            if (!themeRefreshPending && ThemePreferences.getTheme(this) == GlobalSetting.THEME_COURSE &&
+                ThemePreferences.setCourseSeed(this, seed)) {
+                themeRefreshPending = true
+                contentBinding.root.post { recreate() }
+            }
+        }
         mViewModel.background.observe(this, { uri ->
-            Timber.d("set background: $uri")
+            mTimetablePageAdapter.updateWallpaper(uri != null)
+            contentBinding.ivBackground.alpha = if (ThemeManager.isNight(this)) 0.16f else 0.24f
             if (uri == null) {
                 contentBinding.ivBackground.setImageBitmap(null)
             } else {
@@ -97,6 +135,7 @@ class TimetableActivity : BaseActivity(), View.OnClickListener, View.OnLongClick
             when (res) {
                 is Resource.Success -> {
                     mTimetablePageAdapter.updateTimetable(res.data)
+                    mViewModel.refreshCourseThemeSeed()
                     res.handleMessage { message ->
                         snackbar(message)
                     }
@@ -115,9 +154,12 @@ class TimetableActivity : BaseActivity(), View.OnClickListener, View.OnLongClick
         mViewModel.openingDay.observe(this, { openingDay ->
             mTimetablePageAdapter.updateOpeningDay(openingDay)
             mCurrentWeek = openingDay.getCurrentWeek()
-            contentBinding.viewPager.setCurrentItem(mCurrentWeek - 1, false)
             val week = if (mCurrentWeek <= 0) 1 else mCurrentWeek
-            showWeekString(week)
+            val position = restoredWeek ?: (week - 1)
+            restoredWeek = null
+            contentBinding.viewPager.setCurrentItem(position, false)
+            showWeekString(position + 1)
+            mViewModel.refreshCourseThemeSeed()
         })
         mViewModel.timetablePreviews.observe(this, { res ->
             when (res) {
@@ -141,44 +183,39 @@ class TimetableActivity : BaseActivity(), View.OnClickListener, View.OnLongClick
     }
 
     private fun initView() {
-        contentBinding.btnBack.setOnClickListener(this)
-        contentBinding.btnAdd.setOnClickListener(this)
-        contentBinding.btnRefresh.setOnClickListener(this)
-        contentBinding.moreBtn.setOnClickListener(this)
-//        tv_edit_week.setOnClickListener(this)
-//        drawerBinding.editOptionTV.setOnClickListener(this)
+        contentBinding.tbSyllabus.setNavigationOnClickListener { onFinishActivity() }
+        contentBinding.tbSyllabus.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.menu_add -> addCourse()
+                R.id.menu_refresh -> mViewModel.updateSyllabusFromNet()
+                R.id.menu_more -> binding.drawerLayout.openDrawer(Gravity.BOTTOM)
+                else -> return@setOnMenuItemClickListener false
+            }
+            true
+        }
+        contentBinding.tbSyllabus.setOnLongClickListener {
+            rollbackToCurrent()
+            true
+        }
 
         drawerBinding.settingMenu.setOnClickListener(this)
         drawerBinding.timeMenu.setOnClickListener(this)
         drawerBinding.backgroundMenu.setOnClickListener(this)
         drawerBinding.backgroundMenu.setOnLongClickListener {
-            mViewModel.resetBackground()
+            resetBackground()
             true
         }
 
-        drawerBinding.weekSeekBar.setOnSeekBarChangeListener(object :
-            SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (seekBar == null) return
-                contentBinding.viewPager.setCurrentItem(progress, true)
-            }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {
-            }
-
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {
-            }
-        })
-
-        contentBinding.tvDate.text = SimpleDateFormat("M月d日", Locale.CHINA).format(Date())
-        contentBinding.tvSubtitle.setOnLongClickListener(this)
+        drawerBinding.weekSeekBar.addOnChangeListener { _, value, fromUser ->
+            if (fromUser) contentBinding.viewPager.setCurrentItem(value.toInt(), true)
+        }
 
         drawerBinding.timetablePreviewRv.adapter = mPreviewAdapter
 
         contentBinding.viewPager.adapter = mTimetablePageAdapter
         contentBinding.viewPager.registerOnPageChangeCallback(object : OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
-                drawerBinding.weekSeekBar.progress = position
+                drawerBinding.weekSeekBar.value = position.toFloat()
                 showWeekString(position + 1)
             }
         })
@@ -188,113 +225,69 @@ class TimetableActivity : BaseActivity(), View.OnClickListener, View.OnLongClick
         val weekInChinese = "第${ChineseNumbers.englishNumberToChinese((week.toString()))}周"
         val openingDay = mViewModel.openingDay.value
         if (openingDay == null) {
-            contentBinding.tvSubtitle.text = weekInChinese
+            contentBinding.tbSyllabus.subtitle = weekInChinese
             return
         }
         val currentWeek = openingDay.getCurrentWeek()
-        val weekStr = if (currentWeek <= 0) {
-            if (week == 1) {
-                if (openingDay.isCurrentTerm) {
-                    "$weekInChinese(放假中)"
-                } else {
-                    weekInChinese
-                }
-            } else {
-                "$weekInChinese 长按返回第一周"
-            }
-        } else {
-            if (week == currentWeek) {
-                if (openingDay.isCurrentTerm) {
-                    "$weekInChinese(本周)"
-                } else {
-                    "$weekInChinese(非本学期)"
-                }
-            } else {
-                if (openingDay.isCurrentTerm) {
-                    "$weekInChinese 长按返回本周"
-                } else {
-                    "$weekInChinese 长按返回第一周"
-                }
-            }
+        val weekStr = when {
+            currentWeek <= 0 && week == 1 && openingDay.isCurrentTerm -> "$weekInChinese · 假期中"
+            currentWeek > 0 && week == currentWeek && openingDay.isCurrentTerm -> "$weekInChinese · 本周"
+            !openingDay.isCurrentTerm -> "$weekInChinese · 其他学期"
+            else -> weekInChinese
         }
-        contentBinding.tvSubtitle.text = weekStr
+        contentBinding.tbSyllabus.subtitle = weekStr
     }
 
     private fun setSyllabusSetting(setting: SyllabusSetting) {
         mTimetablePageAdapter.updateSetting(setting)
-        val themeColor = setting.themeColor
-        //设置主题色
-        contentBinding.tvDate.setTextColor(themeColor)
-        contentBinding.tvSubtitle.setTextColor(themeColor)
-        contentBinding.btnBack.setColorFilter(themeColor)
-        contentBinding.btnAdd.setColorFilter(themeColor)
-        contentBinding.btnRefresh.setColorFilter(themeColor)
-        contentBinding.moreBtn.setColorFilter(themeColor)
-        ImmersionBar.with(this)
-            .titleBarMarginTop(contentBinding.tbSyllabus)
-            .statusBarDarkFont(setting.statusDartFont)
-            .init()
-        drawerBinding.weekSeekBar.max = setting.weekCnt - 1
+        mViewModel.refreshCourseThemeSeed()
+        val maximum = (setting.weekCnt - 1).coerceAtLeast(1).toFloat()
+        drawerBinding.weekSeekBar.valueTo = maximum
+        drawerBinding.weekSeekBar.isEnabled = setting.weekCnt > 1
     }
 
     override fun onClick(v: View?) {
         when (v?.id) {
-            R.id.btn_add -> {
-                val o = mPreviewAdapter.getSelected()
-                if (o == null) {
-                    snackbar(WHAT_WRONG_WITH_IFAFU)
-                    return
-                }
-                val intent = TimetableItemActivity.intentForAdd(this, o.year, o.term)
-                startActivityForResult(intent, Constants.ACTIVITY_SYLLABUS_ITEM)
-            }
-            R.id.btn_refresh -> mViewModel.updateSyllabusFromNet()
-            R.id.btn_back -> onFinishActivity()
-            R.id.moreBtn -> {
-                binding.drawerLayout.openDrawer(Gravity.BOTTOM)
-            }
             R.id.settingMenu -> {
                 val intent = Intent(this, TimetableSettingActivity::class.java)
                 startActivityForResult(intent, Constants.ACTIVITY_SYLLABUS_SETTING)
             }
             R.id.backgroundMenu -> {
-                val intent = Intent(Intent.ACTION_PICK).apply {
-                    type = "image/*"
-                }
-                startActivityForResult(intent, CODE_PICK)
+                if (TimetableWallpaper.file(this).exists()) {
+                    MaterialAlertDialogBuilder(this)
+                        .setTitle("课表背景")
+                        .setItems(arrayOf("更换图片并取色", "移除背景")) { _, which ->
+                            if (which == 0) pickBackground() else resetBackground()
+                        }.show()
+                } else pickBackground()
             }
-//            R.id.tv_edit_week -> {
-//                showEditCurrentWeekDialog()
-//            }
-//            R.id.editOptionTV -> {
-//                showCheckTermPicker()
-//            }
-//            R.id.timeMenu -> {
-//                snackbar("施工中(･ェ･。)")
-//            }
+            R.id.timeMenu -> {
+                rollbackToCurrent()
+                binding.drawerLayout.closeDrawers()
+            }
         }
     }
 
-    override fun onLongClick(v: View?): Boolean {
-        return when (v?.id) {
-            R.id.tv_subtitle -> {
-                rollbackToCurrent()
-                true
-            }
-            else -> false
+    private fun addCourse() {
+        val option = mPreviewAdapter.getSelected()
+        if (option == null) {
+            snackbar(WHAT_WRONG_WITH_IFAFU)
+            return
         }
+        val intent = TimetableItemActivity.intentForAdd(this, option.year, option.term)
+        startActivityForResult(intent, Constants.ACTIVITY_SYLLABUS_ITEM)
     }
 
     /**
      * 返回当前周
      */
     private fun rollbackToCurrent() {
-        contentBinding.viewPager.setCurrentItem(mCurrentWeek - 1, true)
+        contentBinding.viewPager.setCurrentItem((mCurrentWeek - 1).coerceAtLeast(0), true)
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode == KeyEvent.KEYCODE_BACK && event?.action == KeyEvent.ACTION_DOWN) {
-            if (binding.drawerLayout.isDrawerOpen(binding.drawer.root)) {
+            if (binding.drawerLayout.isDrawerVisible(binding.drawer.root)) {
                 binding.drawerLayout.closeDrawers()
             } else {
                 onFinishActivity()
@@ -315,58 +308,50 @@ class TimetableActivity : BaseActivity(), View.OnClickListener, View.OnLongClick
         finish()
     }
 
-    /**
-     * 裁剪背景
-     */
-    private fun crop(uri: Uri) {
-        val intent = Intent("com.android.camera.action.CROP").apply {
-            setDataAndType(uri, "image/*")
-            putExtra("crop", "true")
-            putExtra("aspectX", window.decorView.width)
-            putExtra("aspectY", window.decorView.height)
-            intent.putExtra("outputX", window.decorView.width) // 宽尺寸
-            intent.putExtra("outputY", window.decorView.height) // 高尺寸
-            intent.putExtra("scale", true) // 保持比例
-            val file = File(getExternalFilesDir("background"), "syllabus.jpg")
-            putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(file))
-            putExtra("outputFormat", Bitmap.CompressFormat.JPEG)
+    private fun pickBackground() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "image/*"
         }
-        startActivityForResult(intent, CODE_CROP)
+        startActivityForResult(intent, CODE_PICK)
     }
 
-    /**
-     * 裁剪背景（当[crop]不支持时，使用调用此方法裁剪图片）
-     */
-    private fun crop2(uri: Uri) {
-        val file = File(getExternalFilesDir("background"), "syllabus.jpg")
-        UCrop.of(uri, Uri.fromFile(file))
-            .withAspectRatio(window.decorView.width.toFloat(), window.decorView.height.toFloat())
-//            .withMaxResultSize(window.decorView.width, window.decorView.heigh)
-            .start(this)
+    private fun resetBackground() {
+        TimetableWallpaper.clear(this)
+        mViewModel.updateBackground()
+        recreate()
     }
 
-    private var backgroundUri: Uri? = null
+    private fun importBackground(uri: Uri) {
+        lifecycleScope.launch {
+            showLoading("正在为壁纸配色…")
+            val result = withContext(Dispatchers.IO) {
+                runCatching { TimetableWallpaper.import(this@TimetableActivity, uri) }
+            }
+            hideLoading()
+            result.onSuccess {
+                binding.drawerLayout.closeDrawers()
+                recreate()
+            }.onFailure {
+                Timber.e(it, "import timetable background failed")
+                showToast("背景图片获取出错，请选择其他图片")
+            }
+        }
+    }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (requestCode == CODE_CROP && resultCode != Activity.RESULT_OK) {
-
-        } else if (resultCode == Activity.RESULT_OK) {
+        if (resultCode == Activity.RESULT_OK) {
             if (requestCode == CODE_PICK) {
                 val uri = data?.data
                 if (uri == null) {
                     showToast("背景图片获取出错")
                 } else {
-                    crop2(uri)
-                    backgroundUri = uri
+                    importBackground(uri)
                 }
-            } else if (requestCode == CODE_CROP) {
-                mViewModel.updateBackground()
             } else if (requestCode == Constants.ACTIVITY_SYLLABUS_ITEM) {
                 mViewModel.updateTimetableLocal()
             } else if (requestCode == Constants.ACTIVITY_SYLLABUS_SETTING) {
                 mViewModel.updateTimetableSetting()
-            } else if (requestCode == UCrop.REQUEST_CROP) {
-                mViewModel.updateBackground()
             } else {
                 super.onActivityResult(requestCode, resultCode, data)
             }
@@ -377,7 +362,6 @@ class TimetableActivity : BaseActivity(), View.OnClickListener, View.OnLongClick
 
     companion object {
         private const val CODE_PICK = 1001
-        private const val CODE_CROP = 1002
     }
 
 }

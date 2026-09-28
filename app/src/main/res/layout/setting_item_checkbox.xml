@@ -11,8 +11,13 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="16dp"
-        android:background="@color/white"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/shape_m3_surface"
+        android:minHeight="80dp"
+        android:paddingStart="20dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="12dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
@@ -27,7 +32,8 @@
                 android:id="@+id/tv_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="15sp"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="16sp"
                 android:text="@{data.title}"
                 tools:text="是否显示分割线"/>
 
@@ -36,8 +42,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:textSize="12sp"
-                android:textColor="#666"
+                android:textSize="13sp"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:text="@{data.tip}"
                 visibleGoneWhen="@{data.tip == null || data.tip.empty}"
                 tools:text="显示分割线"/>

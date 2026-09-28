@@ -5,7 +5,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.Window
 import android.view.WindowManager.LayoutParams
-import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import cn.ifafu.ifafu.IFAFU
 import cn.ifafu.ifafu.R
@@ -15,13 +14,14 @@ import cn.ifafu.ifafu.ui.examlist.ExamListActivity
 import cn.ifafu.ifafu.ui.login.LoginActivity
 import cn.ifafu.ifafu.ui.main.MainActivity
 import cn.ifafu.ifafu.ui.timetable.TimetableActivity
+import cn.ifafu.ifafu.ui.common.BaseActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class SplashActivity : AppCompatActivity() {
+class SplashActivity : BaseActivity() {
 
     @Inject
     lateinit var userDao: UserDao

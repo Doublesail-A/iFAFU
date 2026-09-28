@@ -16,7 +16,7 @@ class ExamAdapter(
 //    private val onClick: (ExamListItemBinding, Exam) -> Unit
 ) : RecyclerView.Adapter<ExamAdapter.ExamViewHolder>() {
 
-    private val format = SimpleDateFormat("yyyy-MM-dd", Locale.CHINA)
+    private val format = SimpleDateFormat("M月d日", Locale.CHINA)
     private val format2 = SimpleDateFormat("HH:mm", Locale.CHINA)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ExamViewHolder {
@@ -51,7 +51,7 @@ class ExamAdapter(
                 "暂无考试时间"
             } else {
                 String.format(
-                    "%s (%s %s~%s)",
+                    "%s %s · %s–%s",
                     format.format(Date(exam.startTime)),
                     weekday,
                     format2.format(Date(exam.startTime)),
@@ -60,7 +60,12 @@ class ExamAdapter(
             }
 
             binding.name.text = exam.name
-            binding.tvExamAddress.text = String.format("%s   %s", exam.address, exam.seatNumber)
+            val address = exam.address.ifBlank { "考场待定" }
+            binding.tvExamAddress.text = if (exam.seatNumber.isBlank()) {
+                address
+            } else {
+                "$address · 座位 ${exam.seatNumber}"
+            }
             when {
                 exam.endTime == 0L -> {
                     binding.tvExamLast.text = "未知"

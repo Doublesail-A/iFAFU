@@ -3,9 +3,11 @@ package cn.ifafu.ifafu
 import android.app.Application
 import cn.ifafu.ifafu.constant.Constants
 import cn.ifafu.ifafu.entity.User
+import cn.ifafu.ifafu.entity.GlobalSetting
+import cn.ifafu.ifafu.util.ThemePreferences
 import com.blankj.utilcode.util.AppUtils
 import com.blankj.utilcode.util.SPUtils
-import com.didichuxing.doraemonkit.DoKit
+import com.google.android.material.color.DynamicColors
 import com.tencent.bugly.Bugly
 import com.tencent.bugly.beta.Beta
 import com.tencent.bugly.crashreport.CrashReport
@@ -19,6 +21,9 @@ class IFAFU : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        DynamicColors.applyToActivitiesIfAvailable(this) { _, _ ->
+            ThemePreferences.getTheme(this) == GlobalSetting.THEME_SYSTEM
+        }
         Timber.plant(Timber.DebugTree())
     }
 
@@ -43,8 +48,6 @@ class IFAFU : Application() {
                 return@withContext
             }
             isInitConfig = true
-
-            DoKit.Builder(application).build()
 
             /* 初始化Bugly */
             Bugly.setUserId(application, user?.account ?: "")

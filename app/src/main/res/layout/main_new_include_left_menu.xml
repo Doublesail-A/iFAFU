@@ -4,7 +4,6 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <data>
-
         <import type="cn.ifafu.ifafu.util.Converter" />
 
         <variable
@@ -15,93 +14,65 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/transparent"
+        android:background="?attr/colorPrimary"
         android:gravity="center"
         android:orientation="vertical"
-        android:paddingStart="0dp"
-        android:paddingEnd="140dp"
-        tools:background="#CCD">
+        android:paddingStart="24dp"
+        android:paddingEnd="164dp"
+        android:paddingBottom="24dp"
+        tools:background="#6750A4">
 
         <ImageView
             android:id="@+id/iv_menu_icon"
-            android:layout_width="75dp"
-            android:layout_height="75dp"
+            android:layout_width="76dp"
+            android:layout_height="76dp"
             android:contentDescription="@{Converter.schoolToString(user.school)}"
             android:src="@{Converter.schoolToIconWhite(context, user.school)}"
             tools:src="@drawable/fafu_bb_icon_white" />
 
         <TextView
             android:id="@+id/tv_menu_name"
-            android:layout_width="75dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="15dp"
+            android:layout_marginTop="12dp"
             android:gravity="center"
+            android:maxLines="1"
             android:text="@{user.name}"
-            android:textColor="@color/white"
-            android:textSize="16sp"
+            android:textColor="?attr/colorOnPrimary"
+            android:textSize="18sp"
+            android:textStyle="bold"
             tools:text="雾深水浅" />
+
+        <View
+            android:layout_width="56dp"
+            android:layout_height="1dp"
+            android:layout_marginTop="22dp"
+            android:layout_marginBottom="10dp"
+            android:background="?attr/colorOnPrimary" />
 
         <TextView
             android:id="@+id/tv_nav_update"
-            android:layout_width="wrap_content"
-            android:layout_height="32dp"
-            android:layout_marginTop="20dp"
-            android:drawablePadding="20dp"
-            android:gravity="center"
+            style="@style/DrawerNavItem"
             android:text="@string/menu_update"
-            android:textColor="@color/white"
-            android:textSize="16sp"
-            app:drawableStartCompat="@drawable/ic_update" />
+            app:drawableStartCompat="@drawable/ic_m3_update" />
 
         <TextView
             android:id="@+id/tv_nav_checkout"
-            android:layout_width="wrap_content"
-            android:layout_height="32dp"
-            android:layout_marginTop="12dp"
-            android:drawablePadding="20dp"
-            android:gravity="center"
+            style="@style/DrawerNavItem"
             android:text="@string/menu_logout"
-            android:textColor="@color/white"
-            android:textSize="16sp"
-            app:drawableStartCompat="@drawable/ic_logout" />
+            app:drawableStartCompat="@drawable/ic_m3_logout" />
 
         <TextView
             android:id="@+id/tv_nav_about"
-            android:layout_width="wrap_content"
-            android:layout_height="32dp"
-            android:layout_marginTop="12dp"
-            android:drawablePadding="20dp"
-            android:gravity="center"
+            style="@style/DrawerNavItem"
             android:text="@string/menu_about"
-            android:textColor="@color/white"
-            android:textSize="16sp"
-            app:drawableStartCompat="@drawable/ic_about" />
+            app:drawableStartCompat="@drawable/ic_m3_info" />
 
         <TextView
             android:id="@+id/tv_nav_setting"
-            android:layout_width="wrap_content"
-            android:layout_height="32dp"
-            android:layout_marginTop="12dp"
-            android:drawablePadding="20dp"
-            android:gravity="center"
+            style="@style/DrawerNavItem"
             android:text="@string/menu_setting"
-            android:textColor="@color/white"
-            android:textSize="16sp"
-            app:drawableStartCompat="@drawable/ic_setting_line" />
-
-        <TextView
-            android:id="@+id/tv_nav_feedback"
-            android:layout_width="wrap_content"
-            android:layout_height="32dp"
-            android:layout_marginTop="12dp"
-            android:layout_marginBottom="20dp"
-            android:drawablePadding="20dp"
-            android:gravity="center"
-            android:text="@string/feedback"
-            android:textColor="@color/white"
-            android:textSize="16sp"
-            app:drawableStartCompat="@drawable/ic_feedback_white" />
+            app:drawableStartCompat="@drawable/ic_m3_settings" />
 
     </LinearLayout>
-
 </layout>

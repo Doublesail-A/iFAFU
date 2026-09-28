@@ -19,7 +19,7 @@ class ProfessionalTimetableParserTest {
 
         private fun optionParserTest() {
             val optionsEles = Jsoup.parse(html)
-                .getElementById("Table1")
+                .getElementById("Table1")!!
                 .children()[0]
                 .children()
                 .flatMap { it.select("td") }

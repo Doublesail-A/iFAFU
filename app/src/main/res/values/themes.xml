@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
 
-    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <style name="AppTheme" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:colorAccent">@color/colorAccent</item>
         <item name="android:colorPrimary">@color/colorPrimary</item>
         <item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
@@ -20,21 +20,20 @@
         <item name="wToolbarStyle">@style/woToolbarStyle</item>
     </style>
 
-    <style name="AppTheme.Splash">
-        <item name="android:windowBackground">@color/white</item>
-        <item name="android:colorAccent">@color/white</item>
-        <item name="android:colorPrimary">@color/white</item>
-        <item name="android:colorPrimaryDark">@color/white</item>
+    <style name="AppTheme.Splash" parent="AppTheme">
+        <item name="android:windowBackground">?attr/colorSurface</item>
+        <item name="android:statusBarColor">?attr/colorSurface</item>
+        <item name="android:navigationBarColor">?attr/colorSurface</item>
     </style>
 
 
-    <style name="AppTheme.Electricity" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <style name="AppTheme.Electricity" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">#33b5e5</item>
         <item name="colorPrimaryDark">#33b5e5</item>
         <item name="colorAccent">#75e7ff</item>
     </style>
 
-    <style name="AppTheme.Login" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <style name="AppTheme.Login" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:colorAccent">#9da8d6</item>
         <item name="android:colorPrimary">#cfd9ff</item>
         <item name="android:colorPrimaryDark">#6d79a5</item>
@@ -47,6 +46,91 @@
         <item name="android:statusBarColor" tools:targetApi="l">?attr/colorPrimaryVariant</item>
         <item name="textInputStyle">@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox
         </item>
+    </style>
+
+    <!-- Fixed palettes generated from the same MD3 tonal roles as Legado with MD3. -->
+    <style name="AppTheme.Green" parent="AppTheme">
+        <item name="colorPrimary">@color/m3_green_primary</item>
+        <item name="colorOnPrimary">@color/m3_green_on_primary</item>
+        <item name="colorPrimaryContainer">@color/m3_green_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/m3_green_on_primary_container</item>
+        <item name="colorSecondary">@color/m3_green_secondary</item>
+        <item name="colorOnSecondary">@color/m3_green_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/m3_green_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/m3_green_on_secondary_container</item>
+        <item name="colorTertiary">@color/m3_green_tertiary</item>
+        <item name="colorOnTertiary">@color/m3_green_on_tertiary</item>
+        <item name="colorTertiaryContainer">@color/m3_green_tertiary_container</item>
+        <item name="colorOnTertiaryContainer">@color/m3_green_on_tertiary_container</item>
+        <item name="android:colorBackground">@color/m3_green_background</item>
+        <item name="colorOnBackground">@color/m3_green_on_background</item>
+        <item name="colorSurface">@color/m3_green_surface</item>
+        <item name="colorSurfaceContainer">@color/m3_green_surface_container</item>
+        <item name="colorSurfaceContainerLow">@color/m3_green_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/m3_green_surface_variant</item>
+        <item name="colorOutlineVariant">@color/m3_green_outline_variant</item>
+        <item name="colorOnSurface">@color/m3_green_on_surface</item>
+        <item name="colorSurfaceVariant">@color/m3_green_surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/m3_green_on_surface_variant</item>
+        <item name="colorOutline">@color/m3_green_outline</item>
+        <item name="android:statusBarColor">@color/m3_green_surface</item>
+        <item name="android:navigationBarColor">@color/m3_green_surface</item>
+    </style>
+
+    <style name="AppTheme.Blue" parent="AppTheme">
+        <item name="colorPrimary">@color/m3_blue_primary</item>
+        <item name="colorOnPrimary">@color/m3_blue_on_primary</item>
+        <item name="colorPrimaryContainer">@color/m3_blue_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/m3_blue_on_primary_container</item>
+        <item name="colorSecondary">@color/m3_blue_secondary</item>
+        <item name="colorOnSecondary">@color/m3_blue_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/m3_blue_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/m3_blue_on_secondary_container</item>
+        <item name="colorTertiary">@color/m3_blue_tertiary</item>
+        <item name="colorOnTertiary">@color/m3_blue_on_tertiary</item>
+        <item name="colorTertiaryContainer">@color/m3_blue_tertiary_container</item>
+        <item name="colorOnTertiaryContainer">@color/m3_blue_on_tertiary_container</item>
+        <item name="android:colorBackground">@color/m3_blue_background</item>
+        <item name="colorOnBackground">@color/m3_blue_on_background</item>
+        <item name="colorSurface">@color/m3_blue_surface</item>
+        <item name="colorSurfaceContainer">@color/m3_blue_surface_container</item>
+        <item name="colorSurfaceContainerLow">@color/m3_blue_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/m3_blue_surface_variant</item>
+        <item name="colorOutlineVariant">@color/m3_blue_outline_variant</item>
+        <item name="colorOnSurface">@color/m3_blue_on_surface</item>
+        <item name="colorSurfaceVariant">@color/m3_blue_surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/m3_blue_on_surface_variant</item>
+        <item name="colorOutline">@color/m3_blue_outline</item>
+        <item name="android:statusBarColor">@color/m3_blue_surface</item>
+        <item name="android:navigationBarColor">@color/m3_blue_surface</item>
+    </style>
+
+    <style name="AppTheme.Rose" parent="AppTheme">
+        <item name="colorPrimary">@color/m3_rose_primary</item>
+        <item name="colorOnPrimary">@color/m3_rose_on_primary</item>
+        <item name="colorPrimaryContainer">@color/m3_rose_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/m3_rose_on_primary_container</item>
+        <item name="colorSecondary">@color/m3_rose_secondary</item>
+        <item name="colorOnSecondary">@color/m3_rose_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/m3_rose_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/m3_rose_on_secondary_container</item>
+        <item name="colorTertiary">@color/m3_rose_tertiary</item>
+        <item name="colorOnTertiary">@color/m3_rose_on_tertiary</item>
+        <item name="colorTertiaryContainer">@color/m3_rose_tertiary_container</item>
+        <item name="colorOnTertiaryContainer">@color/m3_rose_on_tertiary_container</item>
+        <item name="android:colorBackground">@color/m3_rose_background</item>
+        <item name="colorOnBackground">@color/m3_rose_on_background</item>
+        <item name="colorSurface">@color/m3_rose_surface</item>
+        <item name="colorSurfaceContainer">@color/m3_rose_surface_container</item>
+        <item name="colorSurfaceContainerLow">@color/m3_rose_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/m3_rose_surface_variant</item>
+        <item name="colorOutlineVariant">@color/m3_rose_outline_variant</item>
+        <item name="colorOnSurface">@color/m3_rose_on_surface</item>
+        <item name="colorSurfaceVariant">@color/m3_rose_surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/m3_rose_on_surface_variant</item>
+        <item name="colorOutline">@color/m3_rose_outline</item>
+        <item name="android:statusBarColor">@color/m3_rose_surface</item>
+        <item name="android:navigationBarColor">@color/m3_rose_surface</item>
     </style>
 
 </resources>

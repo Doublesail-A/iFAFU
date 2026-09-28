@@ -2,15 +2,16 @@ package cn.ifafu.ifafu.ui.common.dialog.mutiluser
 
 import android.content.ClipboardManager
 import android.content.Context
+import android.view.LayoutInflater
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.recyclerview.widget.RecyclerView
 import cn.ifafu.ifafu.BuildConfig
 import cn.ifafu.ifafu.R
 import cn.ifafu.ifafu.entity.User
 import cn.ifafu.ifafu.repository.UserRepository
-import com.afollestad.materialdialogs.MaterialDialog
-import com.afollestad.materialdialogs.customview.customView
 import com.alibaba.fastjson.JSONObject
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -18,7 +19,7 @@ import javax.inject.Inject
 @Suppress("DEPRECATION")
 class MultiUserDialog(
     private val context: Context,
-    private val onAddClick: (MaterialDialog) -> Unit,
+    private val onAddClick: () -> Unit,
     private val onItemClick: (User) -> Unit
 ) {
 
@@ -29,21 +30,20 @@ class MultiUserDialog(
         onItemClick(user)
     }
 
-    private val dialog =
-        MaterialDialog(context).apply {
-            customView(viewRes = R.layout.dialog_multi_account)
-            title(text = "多账号管理")
-            negativeButton(text = "添加账号") {
-                onAddClick(it)
-            }
-            if (BuildConfig.DEBUG) {
-                neutralButton(text = "导入账号") {
-                    importAccountFromClipboard()
+    private val dialog: AlertDialog by lazy {
+        val content = LayoutInflater.from(context).inflate(R.layout.dialog_multi_account, null)
+        content.findViewById<RecyclerView>(R.id.rv_list).adapter = adapter
+        MaterialAlertDialogBuilder(context)
+            .setTitle("账号管理")
+            .setView(content)
+            .apply {
+                if (BuildConfig.DEBUG) {
+                    setNeutralButton("导入账号") { _, _ -> importAccountFromClipboard() }
                 }
             }
-        }.apply {
-            this.view.findViewById<RecyclerView>(R.id.rv_list).adapter = adapter
-        }
+            .setPositiveButton("添加账号") { _, _ -> onAddClick() }
+            .create()
+    }
 
     fun setUsers(users: List<User>) {
         adapter.items = users

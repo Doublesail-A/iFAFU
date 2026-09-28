@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.util.AttributeSet;
 
 import androidx.annotation.ColorInt;
@@ -13,16 +14,21 @@ import androidx.appcompat.widget.AppCompatImageView;
 import java.util.List;
 
 import cn.ifafu.ifafu.ui.view.timetable.TimetableItem;
-import cn.ifafu.ifafu.util.ColorUtils;
+import cn.ifafu.ifafu.ui.timetable.CourseColors;
+import cn.ifafu.ifafu.ui.timetable.CourseColorPalette;
+import android.content.res.Configuration;
+import java.util.ArrayList;
 
 public class TimetablePreviewView extends AppCompatImageView {
 
     private final Paint mPaint;
     private final Rect rect;
+    private final RectF rectF;
 
     private static final int ROW_COUNT = 10;
 
     private List<TimetableItem> items;
+    private CourseColors colors;
 
     public TimetablePreviewView(Context context) {
         this(context, null);
@@ -39,10 +45,14 @@ public class TimetablePreviewView extends AppCompatImageView {
         mPaint.setStyle(Paint.Style.FILL);
 
         rect = new Rect();
+        rectF = new RectF();
     }
 
     public void setItems(List<TimetableItem> items) {
         this.items = items;
+        ArrayList<String> names = new ArrayList<>();
+        if (items != null) for (TimetableItem item : items) names.add(item.name);
+        colors = CourseColorPalette.INSTANCE.forCourses(getContext(), names);
         invalidate();
     }
 
@@ -66,16 +76,20 @@ public class TimetablePreviewView extends AppCompatImageView {
             final float dy = itemHeight * (item.startNode - 1);
             canvas.translate(dx, dy);
 
-            mPaint.setColor(getRandomColor());
-            rect.set(0, 0, (int) (itemWidth + 0.5f), (int) (itemHeight * item.nodeCount + 0.5f));
-            canvas.drawRect(rect, mPaint);
+            mPaint.setColor(getColor(item.name));
+            rect.set(1, 1, (int) (itemWidth - 1 + 0.5f),
+                    (int) (itemHeight * item.nodeCount - 1 + 0.5f));
+            rectF.set(rect);
+            canvas.drawRoundRect(rectF, 3F, 3F, mPaint);
 
             canvas.restore();
         }
     }
 
     @ColorInt
-    private int getRandomColor() {
-        return ColorUtils.getRandomLightColor();
+    private int getColor(String name) {
+        boolean dark = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+                == Configuration.UI_MODE_NIGHT_YES;
+        return colors.displayColorFor(name == null ? "" : name, dark);
     }
 }

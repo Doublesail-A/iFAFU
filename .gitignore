@@ -67,3 +67,8 @@ key-release.jks
 app/apk/
 /app/bugly/
 *.patch
+dist/
+# Local credentials and test-device data must stay outside the repository.
+.env
+.env.*
+*.hprof

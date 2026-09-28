@@ -15,7 +15,6 @@ import cn.ifafu.ifafu.databinding.MainNewFragmentBinding
 import cn.ifafu.ifafu.databinding.MainNewIncludeBinding
 import cn.ifafu.ifafu.databinding.MainNewIncludeLeftMenuBinding
 import cn.ifafu.ifafu.ui.activity.AboutActivity
-import cn.ifafu.ifafu.ui.feedback.FeedbackActivity
 import cn.ifafu.ifafu.ui.main.MainMenuHandler
 import cn.ifafu.ifafu.ui.main.MainViewModel
 import cn.ifafu.ifafu.ui.setting.SettingActivity
@@ -45,7 +44,6 @@ class MainNewFragment : BaseFragment(R.layout.main_new_fragment), View.OnClickLi
 
         contentBinding.btnMenu.setOnClickListener(this)
         leftMenuBinding.tvNavAbout.setOnClickListener(this)
-        leftMenuBinding.tvNavFeedback.setOnClickListener(this)
         leftMenuBinding.tvNavSetting.setOnClickListener(this)
         leftMenuBinding.tvNavUpdate.setOnClickListener(this)
         leftMenuBinding.tvNavCheckout.setOnClickListener(this)
@@ -77,24 +75,6 @@ class MainNewFragment : BaseFragment(R.layout.main_new_fragment), View.OnClickLi
                 contentBinding.layoutNextCourse.root.visibility = View.GONE
             }
         })
-        viewModel.isIFAFUUser.observe(viewLifecycleOwner,  { isIFAFUUser ->
-            if (isIFAFUUser) {
-                if (!menuAdapter.data.any { it.id == R.id.menu_person_center }) {
-                    menuAdapter.data.add(
-                        MenuVO(
-                            R.id.menu_person_center,
-                            R.drawable.ic_person,
-                            "个人中心"
-                        )
-                    )
-                    menuAdapter.notifyItemInserted(menuAdapter.data.size - 1)
-                }
-            } else {
-                if (menuAdapter.data.removeAll { it.id == R.id.menu_person_center }) {
-                    menuAdapter.notifyDataSetChanged()
-                }
-            }
-        })
         viewModel.weather.observe(viewLifecycleOwner, { weather ->
             if (weather == null) {
                 contentBinding.layoutWeather.root.visibility = View.GONE
@@ -110,7 +90,6 @@ class MainNewFragment : BaseFragment(R.layout.main_new_fragment), View.OnClickLi
 
     override fun onStart() {
         super.onStart()
-        viewModel.updateIFAFUUser()
         viewModel.updateNextCourse()
         viewModel.updateWeather()
         viewModel.updateTimeAxis()
@@ -118,17 +97,12 @@ class MainNewFragment : BaseFragment(R.layout.main_new_fragment), View.OnClickLi
 
     private fun initMenu() {
         val menus = linkedSetOf(
-            MenuVO(R.id.menu_schedule, R.drawable.tab_syllabus, "课程表"),
-            MenuVO(R.id.menu_exam_list, R.drawable.tab_exam, "考试计划"),
-            MenuVO(R.id.menu_score_list, R.drawable.tab_score, "成绩查询"),
-            MenuVO(R.id.menu_elective, R.drawable.tab_elective, "选修查询"),
-            MenuVO(R.id.menu_web, R.drawable.tab_web, "网页模式"),
-//            MenuVO(R.id.menu_comment, R.drawable.tab_comment, "教学评教"),
-//            MenuVO(R.id.menu_electricity, R.drawable.tab_electricity, "电费查询"),
-//            MenuVO(R.id.menu_repair, R.drawable.tab_repair, "报修服务"),
-            MenuVO(R.id.menu_feedback, R.drawable.tab_feedback, "反馈问题"),
-            MenuVO(R.id.menu_information, R.drawable.ic_information, "信息平台"),
-            MenuVO(R.id.menu_boya, R.drawable.ic_robot, "校园百事通")
+            MenuVO(R.id.menu_schedule, R.drawable.ic_m3_calendar_month, "课程表"),
+            MenuVO(R.id.menu_exam_list, R.drawable.ic_m3_event_note, "考试计划"),
+            MenuVO(R.id.menu_score_list, R.drawable.ic_m3_grade, "成绩查询"),
+            MenuVO(R.id.menu_elective, R.drawable.ic_m3_menu_book, "选修查询"),
+            MenuVO(R.id.menu_web, R.drawable.ic_m3_language, "网页模式"),
+            MenuVO(R.id.menu_boya, R.drawable.ic_m3_smart_toy, "校园百事通")
         )
         val menuHandler = MainMenuHandler(requireContext())
         menuAdapter = MenuAdapter {
@@ -139,7 +113,7 @@ class MainNewFragment : BaseFragment(R.layout.main_new_fragment), View.OnClickLi
         contentBinding.rvMenu.adapter = menuAdapter
         activityViewModel.isShowComment.observe(viewLifecycleOwner) { showComment ->
             if (showComment) {
-                menus.add(MenuVO(R.id.menu_comment, R.drawable.tab_comment, "一键评教"))
+                menus.add(MenuVO(R.id.menu_comment, R.drawable.ic_m3_event_note, "一键评教"))
                 menuAdapter.notifyDataSetChanged()
             }
         }
@@ -150,7 +124,6 @@ class MainNewFragment : BaseFragment(R.layout.main_new_fragment), View.OnClickLi
             R.id.btn_menu -> binding.drawerMain.open()
             R.id.tv_nav_update -> activityViewModel.upgradeApp()
             R.id.tv_nav_about -> startActivity(Intent(context, AboutActivity::class.java))
-            R.id.tv_nav_feedback -> startActivity(Intent(context, FeedbackActivity::class.java))
             R.id.tv_nav_setting -> {
                 val intent = Intent(context, SettingActivity::class.java)
                 requireActivity().startActivityForResult(intent, Constants.ACTIVITY_SETTING)

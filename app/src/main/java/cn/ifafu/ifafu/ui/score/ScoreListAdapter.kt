@@ -1,46 +1,50 @@
 package cn.ifafu.ifafu.ui.score
 
-import androidx.core.content.ContextCompat
+import android.content.res.ColorStateList
+import android.widget.ImageView
+import androidx.core.widget.ImageViewCompat
 import androidx.navigation.findNavController
 import cn.ifafu.ifafu.R
 import cn.ifafu.ifafu.entity.Score
 import cn.ifafu.ifafu.util.GlobalLib
 import com.chad.library.adapter.base.BaseQuickAdapter
 import com.chad.library.adapter.base.viewholder.BaseViewHolder
+import com.google.android.material.color.MaterialColors
 
 class ScoreListAdapter : BaseQuickAdapter<Score, BaseViewHolder>(R.layout.score_list_item) {
 
     override fun convert(holder: BaseViewHolder, item: Score) {
         holder.setText(R.id.tv_score_name, item.name)
-        val calcScore = item.realScore
-        if (calcScore == Score.FREE_COURSE) {
-            holder.setText(R.id.tv_score, "免修")
+        val score = item.realScore
+        holder.setText(
+            R.id.tv_score,
+            if (score == Score.FREE_COURSE) "免修" else GlobalLib.formatFloat(score, 2),
+        )
+
+        val isFailure = score < 60 && score != Score.FREE_COURSE
+        val scoreColorAttr = if (isFailure) {
+            com.google.android.material.R.attr.colorError
         } else {
-            holder.setText(R.id.tv_score, GlobalLib.formatFloat(calcScore, 2))
+            com.google.android.material.R.attr.colorPrimary
         }
-        if (calcScore >= 60 || calcScore == Score.FREE_COURSE) {
-            holder.setTextColor(R.id.tv_score, ContextCompat.getColor(context, R.color.ifafu_blue))
-        } else {
-            holder.setTextColor(R.id.tv_score, ContextCompat.getColor(context, R.color.red))
+        val scoreColor = MaterialColors.getColor(holder.itemView, scoreColorAttr)
+        holder.setTextColor(R.id.tv_score, scoreColor)
+
+        val icon = when {
+            isFailure -> R.drawable.ic_m3_warning
+            item.nature.contains("选修") -> R.drawable.ic_m3_menu_book
+            score == Score.FREE_COURSE -> R.drawable.ic_m3_event_note
+            else -> R.drawable.ic_m3_grade
         }
-        when {
-            calcScore == Score.FREE_COURSE ->
-                holder.setImageResource(R.id.iv_tip, R.drawable.ic_score_mian)
-            item.name.contains("体育") ->
-                holder.setImageResource(R.id.iv_tip, R.drawable.ic_score_ti)
-            item.nature.contains("任意选修") || item.nature.contains("公共选修") ->
-                holder.setImageResource(R.id.iv_tip, R.drawable.ic_score_xuan)
-            calcScore < 60 ->
-                holder.setImageResource(R.id.iv_tip, R.drawable.ic_score_warm)
-            else ->
-                holder.setImageDrawable(R.id.iv_tip, null)
-        }
-        holder.itemView.setOnClickListener { v ->
+        holder.setImageResource(R.id.iv_tip, icon)
+        ImageViewCompat.setImageTintList(
+            holder.getView<ImageView>(R.id.iv_tip),
+            ColorStateList.valueOf(scoreColor),
+        )
+        holder.itemView.setOnClickListener { view ->
             val action = ScoreListFragmentDirections
                 .actionFragmentScoreListToFragmentScoreDetail(item)
-            v.findNavController().navigate(action)
+            view.findNavController().navigate(action)
         }
     }
-
-
 }

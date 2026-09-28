@@ -40,7 +40,7 @@ class Event<out T>(private val content: T) {
 
 }
 
-class EventObserver<T>(private val handle: (T) -> Unit) : Observer<Event<T>> {
+class EventObserver<T>(private val handle: (T) -> Unit) : Observer<Event<T>?> {
     override fun onChanged(t: Event<T>?) {
         t?.runContentIfNotHandled {
             handle(it)

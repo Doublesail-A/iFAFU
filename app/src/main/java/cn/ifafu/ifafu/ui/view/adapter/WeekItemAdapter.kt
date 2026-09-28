@@ -1,69 +1,96 @@
 package cn.ifafu.ifafu.ui.view.adapter
 
 import android.content.Context
-import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.LinearLayout
-import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import cn.ifafu.ifafu.R
 import cn.ifafu.ifafu.util.DensityUtils
-import java.util.*
+import com.google.android.material.color.MaterialColors
+import com.google.android.material.textview.MaterialTextView
+import java.util.SortedSet
+import java.util.TreeSet
 
 class WeekItemAdapter(private val context: Context) : RecyclerView.Adapter<WeekItemAdapter.VH>() {
+
     var weekList: SortedSet<Int> = TreeSet()
     private var listener: OnItemClickListener? = null
-    var editMode = false
+    var editMode: Boolean = false
+        set(value) {
+            field = value
+            notifyDataSetChanged()
+        }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
-        val tv = TextView(context)
-        val params = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, DensityUtils.dp2px(context, 64f))
-        val px1 = DensityUtils.dp2px(context, 1f)
-        params.setMargins(px1 shr 1, px1, px1 shr 1, 0)
-        tv.layoutParams = params
-        tv.gravity = Gravity.CENTER
-        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-        tv.setTextColor(Color.WHITE)
-        return VH(tv)
+        val textView = MaterialTextView(context).apply {
+            layoutParams = RecyclerView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                DensityUtils.dp2px(context, 48f),
+            ).also {
+                val margin = DensityUtils.dp2px(context, 4f)
+                it.setMargins(margin, margin, margin, margin)
+            }
+            gravity = Gravity.CENTER
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            isFocusable = true
+        }
+        return VH(textView)
     }
 
     override fun onBindViewHolder(holder: VH, position: Int) {
-        holder.textView.text = (position + 1).toString()
-        if (weekList.contains(position + 1)) {
-            holder.textView.setBackgroundResource(R.color.ifafu_blue)
-        } else {
-            holder.textView.setBackgroundResource(R.color.light_gray)
-        }
+        val week = position + 1
+        val selected = weekList.contains(week)
+        holder.textView.text = "第${week}周"
+        holder.textView.background = pillBackground(selected)
+        holder.textView.alpha = if (selected) 1f else 0.58f
+        holder.textView.setTextColor(
+            MaterialColors.getColor(
+                holder.textView,
+                if (selected && editMode) com.google.android.material.R.attr.colorOnPrimary
+                else if (selected) com.google.android.material.R.attr.colorOnPrimaryContainer
+                else com.google.android.material.R.attr.colorOnSurfaceVariant,
+                0xFF1D1B20.toInt(),
+            ),
+        )
+        holder.textView.isClickable = editMode
+        holder.textView.contentDescription = "第${week}周${if (selected) "，已选择" else "，未选择"}"
         holder.textView.setOnClickListener {
-            listener?.onItemClick(position)
+            listener?.onItemClick(week - 1)
             if (!editMode) return@setOnClickListener
-            if (weekList.contains(position + 1)) {
-                weekList.remove(position + 1)
-                holder.textView.setBackgroundResource(R.color.light_gray)
-            } else {
-                weekList.add(position + 1)
-                holder.textView.setBackgroundResource(R.color.ifafu_blue)
-            }
+            if (selected) weekList.remove(week) else weekList.add(week)
+            notifyItemChanged(position)
         }
     }
 
-    override fun getItemCount(): Int {
-        return 20
-    }
+    override fun getItemCount(): Int = 20
 
     fun setOnItemClickListener(listener: OnItemClickListener?) {
         this.listener = listener
     }
 
-    interface OnItemClickListener {
+    private fun pillBackground(selected: Boolean): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = DensityUtils.dp2px(context, 16f).toFloat()
+            setColor(
+                MaterialColors.getColor(
+                    context,
+                    if (selected && editMode) com.google.android.material.R.attr.colorPrimary
+                    else if (selected) com.google.android.material.R.attr.colorPrimaryContainer
+                    else com.google.android.material.R.attr.colorSurfaceVariant,
+                    0xFFE7E0EC.toInt(),
+                ),
+            )
+        }
+    }
+
+    fun interface OnItemClickListener {
         fun onItemClick(position: Int)
     }
 
     class VH(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        var textView = itemView as TextView
+        val textView = itemView as MaterialTextView
     }
-
 }

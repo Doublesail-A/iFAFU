@@ -13,13 +13,10 @@ import cn.ifafu.ifafu.ui.activity.BoyaActivity
 import cn.ifafu.ifafu.ui.elective.ElectiveActivity
 import cn.ifafu.ifafu.ui.electricity.main.ElectricityActivity
 import cn.ifafu.ifafu.ui.examlist.ExamListActivity
-import cn.ifafu.ifafu.ui.feedback.FeedbackActivity
 import cn.ifafu.ifafu.ui.score.ScoreActivity
 import cn.ifafu.ifafu.ui.timetable.TimetableActivity
 import cn.ifafu.ifafu.ui.web.WebActivity
-import cn.ifafu.ifafu.ui.center.CenterActivity
 import cn.ifafu.ifafu.ui.comment.CommentActivity
-import cn.ifafu.ifafu.ui.information.InformationActivity
 
 class MainMenuHandler(private val context: Context) {
 
@@ -59,12 +56,6 @@ class MainMenuHandler(private val context: Context) {
                     startActivityByClazz(BoyaActivity::class.java)
                 }
             }
-            R.id.menu_person_center ->
-                startActivityByClazz(CenterActivity::class.java)
-            R.id.menu_feedback ->
-                startActivityByClazz(FeedbackActivity::class.java)
-            R.id.menu_information ->
-                startActivityByClazz(InformationActivity::class.java)
             R.id.menu_about_ifafu ->
                 startActivityByClazz(AboutActivity::class.java)
             else -> return false

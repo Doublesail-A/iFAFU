@@ -1,6 +1,7 @@
 package cn.ifafu.ifafu.ui.common
 
 import android.os.Build
+import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.widget.Toast
@@ -11,6 +12,8 @@ import androidx.databinding.ViewDataBinding
 import androidx.lifecycle.LiveData
 import cn.ifafu.ifafu.bean.vo.Resource
 import cn.ifafu.ifafu.ui.common.dialog.LoadingDialog
+import cn.ifafu.ifafu.util.ThemeManager
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.snackbar.Snackbar
 import com.gyf.immersionbar.ImmersionBar
 
@@ -19,9 +22,21 @@ abstract class BaseActivity : AppCompatActivity {
     private val mLoadingDialog: LoadingDialog by lazy { LoadingDialog(this) }
 
     private var toast: Toast? = null
+    private var appliedPaletteKey = ""
 
     constructor() : super()
     constructor(contentLayoutId: Int) : super(contentLayoutId)
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        ThemeManager.apply(this)
+        appliedPaletteKey = ThemeManager.paletteKey(this)
+        super.onCreate(savedInstanceState)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (appliedPaletteKey != ThemeManager.paletteKey(this)) recreate()
+    }
 
     protected fun setTransparentStatusBar() {
         ImmersionBar.with(this).init()
@@ -32,7 +47,33 @@ abstract class BaseActivity : AppCompatActivity {
      */
     fun setLightUiBar() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            val light = !ThemeManager.isNight(this)
+            var flags = window.decorView.systemUiVisibility
+            flags = if (light) {
+                flags or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            } else {
+                flags and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                flags = if (light) {
+                    flags or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+                } else {
+                    flags and View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
+                }
+            }
+            window.decorView.systemUiVisibility = flags
+            window.statusBarColor = MaterialColors.getColor(
+                this,
+                com.google.android.material.R.attr.colorSurface,
+                window.statusBarColor
+            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                window.navigationBarColor = MaterialColors.getColor(
+                    this,
+                    com.google.android.material.R.attr.colorSurface,
+                    window.navigationBarColor
+                )
+            }
         }
     }
 

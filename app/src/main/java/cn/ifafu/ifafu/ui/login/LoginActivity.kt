@@ -68,7 +68,7 @@ class LoginActivity : BaseActivity() {
 
 
         // 隐私政策
-        binding.checkboxPolicy.setChecked(true, false)
+        binding.checkboxPolicy.isChecked = true
         binding.tvPolicy.setOnClickListener {
             WebActivity.intentFor(this, Constants.PRIVACY_POLICY_URL, "《隐私政策》")
                 .also { intent -> startActivity(intent) }

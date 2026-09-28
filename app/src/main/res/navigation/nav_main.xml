@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_main"
+    app:startDestination="@id/fragment_home">
+
+    <fragment
+        android:id="@+id/fragment_home"
+        android:name="cn.ifafu.ifafu.ui.main.home.HomeFragment"
+        android:label="iFAFU"
+        tools:layout="@layout/home_fragment" />
+
+    <include app:graph="@navigation/nav_score" />
+    <include app:graph="@navigation/nav_elective" />
+</navigation>

@@ -34,7 +34,8 @@ class MultiUserAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         private val schoolIconIv = binding.ivSchool
-        private val textTv = binding.tvText
+        private val nameTv = binding.tvName
+        private val accountTv = binding.tvAccount
 
         fun bind(user: User) {
             schoolIconIv.setImageResource(
@@ -44,7 +45,8 @@ class MultiUserAdapter(
                     else -> R.drawable.icon_ifafu_round
                 }
             )
-            textTv.text = ("${user.name} ${user.account}")
+            nameTv.text = user.name
+            accountTv.text = user.account
             itemView.setOnClickListener {
                 onItemClick(it, user)
             }
