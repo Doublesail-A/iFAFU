@@ -329,9 +329,12 @@ class TimetableActivity : BaseActivity(), View.OnClickListener {
                 runCatching { TimetableWallpaper.import(this@TimetableActivity, uri) }
             }
             hideLoading()
-            result.onSuccess {
-                binding.drawerLayout.closeDrawers()
-                recreate()
+              result.onSuccess {
+                  binding.drawerLayout.closeDrawers()
+                  // Activity recreation retains the ViewModel; reload its cached
+                  // image URI so the newly selected wallpaper appears immediately.
+                  mViewModel.updateBackground()
+                  recreate()
             }.onFailure {
                 Timber.e(it, "import timetable background failed")
                 showToast("背景图片获取出错，请选择其他图片")

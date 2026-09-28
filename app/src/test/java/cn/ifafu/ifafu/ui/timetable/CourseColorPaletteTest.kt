@@ -3,14 +3,27 @@ package cn.ifafu.ifafu.ui.timetable
 import org.junit.Assert.*
 import org.junit.Test
 import com.google.android.material.color.utilities.Hct
+import com.google.android.material.color.utilities.SchemeTonalSpot
+import com.google.android.material.color.utilities.MaterialDynamicColors
 import cn.ifafu.ifafu.entity.NewCourse
 import cn.ifafu.ifafu.entity.SyllabusSetting
 import cn.ifafu.ifafu.util.CourseSchedule
 import java.util.Calendar
 
 class CourseColorPaletteTest {
+    @Test fun globalThemeHasSeparateLightAndDarkContainerTones() {
+        val roles = MaterialDynamicColors()
+        listOf(0xff8355dd.toInt(), 0xfff6d91f.toInt(), 0xff22aa88.toInt()).forEach { seed ->
+            val light = SchemeTonalSpot(Hct.fromInt(seed), false, 0.0)
+            val dark = SchemeTonalSpot(Hct.fromInt(seed), true, 0.0)
+            assertEquals(90.0, Hct.fromInt(roles.primaryContainer().getArgb(light)).tone, 0.5)
+            assertEquals(30.0, Hct.fromInt(roles.primaryContainer().getArgb(dark)).tone, 0.5)
+            assertTrue(Hct.fromInt(roles.onPrimaryContainer().getArgb(light)).tone < 20.0)
+            assertTrue(Hct.fromInt(roles.onPrimaryContainer().getArgb(dark)).tone > 80.0)
+        }
+    }
     @Test fun rescheduledCourseRetainsIdentity() {
-        listOf("[调课]高等数学D", "【调课】 高等数学D", "（补课）高等数学D")
+        listOf("[调课]高等数学D", "【调课】 高等数学D", "（补课）高等数学D", "「调课」高等数学D")
             .forEach { assertEquals(CourseColorPalette.identity("高等数学D"), CourseColorPalette.identity(it)) }
         assertNotEquals(CourseColorPalette.identity("植物学A（双语课）"),
             CourseColorPalette.identity("植物学实验A"))
@@ -33,6 +46,19 @@ class CourseColorPaletteTest {
         val colors = CourseColors(assigned)
         assertEquals(names.size, names.map { colors.displayColorFor(it, false) }.toSet().size)
         assertEquals(names.size, names.map { colors.displayColorFor(it, true) }.toSet().size)
+    }
+
+    @Test fun mathAndLabRemainVisuallySeparatedInTheExistingTerm() {
+        // Regression: the old 12-color overflow gave indices 14 and 8 almost
+        // identical peach backgrounds, although the integer colors differed.
+        val colors = CourseColors(mapOf(CourseColorPalette.identity("高等数学D") to 14,
+            CourseColorPalette.identity("植物学实验A") to 8))
+        listOf(false, true).forEach { dark ->
+            val math = Hct.fromInt(colors.displayColorFor("高等数学D", dark))
+            val lab = Hct.fromInt(colors.displayColorFor("植物学实验A", dark))
+            val distance = kotlin.math.abs(math.hue - lab.hue)
+            assertTrue(minOf(distance, 360.0 - distance) > 60.0)
+        }
     }
 
     @Test fun previewsCannotStealAnExistingSubjectsColor() {

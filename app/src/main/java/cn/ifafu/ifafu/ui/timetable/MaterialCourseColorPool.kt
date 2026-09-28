@@ -10,11 +10,11 @@ import java.util.Locale
 /** One persistent identity per subject; scheduling annotations never change its color. */
 object CourseColorPalette {
     private val annotation = Regex(
-        "^(?:[\\[【（(]\\s*(?:调课|补课|停课|重修)\\s*[\\]】）)]\\s*)+"
+        "^(?:[\\[【（(「『]\\s*(?:调课|补课|停课|重修)\\s*[\\]】）)」』]\\s*)+"
     )
     // Interleave distant hues, so small course sets have clear visual separation.
-    private val hues = doubleArrayOf(260.0, 175.0, 30.0, 305.0, 85.0, 350.0,
-        145.0, 225.0, 55.0, 195.0, 5.0, 115.0)
+    private val hues = doubleArrayOf(247.5, 157.5, 22.5, 292.5, 90.0, 337.5,
+        135.0, 202.5, 45.0, 180.0, 0.0, 112.5, 270.0, 67.5, 315.0, 225.0)
 
     @JvmStatic
     fun identity(name: String): String = name.trim().replace(annotation, "")

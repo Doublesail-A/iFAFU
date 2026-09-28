@@ -1,13 +1,12 @@
 package cn.ifafu.ifafu.ui.widget
 
 import android.app.PendingIntent
-import android.app.PendingIntent.FLAG_IMMUTABLE
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.os.Build
+import androidx.core.app.PendingIntentCompat
 import android.view.View
 import android.widget.RemoteViews
 import cn.ifafu.ifafu.R
@@ -37,22 +36,14 @@ class SyllabusWidget : AppWidgetProvider() {
             val syllabusIntent: PendingIntent = run {
                 val intent = Intent(context, TimetableActivity::class.java)
                 intent.putExtra("from", Constants.SYLLABUS_WIDGET)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    PendingIntent.getActivity(context, 0, intent, FLAG_IMMUTABLE)
-                } else {
-                    PendingIntent.getActivity(context, 0, intent, 0)
-                }
+                requireNotNull(PendingIntentCompat.getActivity(context, 0, intent, 0, false))
             }
             remoteViews.setOnClickPendingIntent(R.id.btn_go, syllabusIntent)
             //设置刷新Widget按钮监听
-            val refreshIntent: PendingIntent = Intent()
+            val refreshIntent: PendingIntent = Intent(context, SyllabusWidget::class.java)
                 .let { intent ->
                     intent.action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        PendingIntent.getBroadcast(context, 0, intent, FLAG_IMMUTABLE)
-                    } else {
-                        PendingIntent.getBroadcast(context, 0, intent, 0)
-                    }
+                    requireNotNull(PendingIntentCompat.getBroadcast(context, 0, intent, 0, false))
                 }
             remoteViews.setOnClickPendingIntent(R.id.btn_refresh, refreshIntent)
             //更新刷新时间
