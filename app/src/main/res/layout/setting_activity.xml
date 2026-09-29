@@ -16,7 +16,7 @@
             android:layout_width="match_parent"
             android:layout_height="64dp"
             android:background="?attr/colorSurface"
-            android:title="外观"
+            android:title="设置"
             android:titleTextColor="?attr/colorOnSurface"
             app:navigationIcon="@drawable/ic_m3_arrow_back"
             app:navigationIconTint="?attr/colorOnSurface"
@@ -145,10 +145,11 @@
                         android:paddingTop="18dp"
                         android:paddingEnd="20dp"
                         android:paddingBottom="18dp"
-                        android:text="随课程变化会呼应下一节课的颜色。更换课表背景后，壁纸取色会自动为整个应用配色。也可以选择系统配色或竹青、晴空、樱粉。"
+                        android:text="使用 Google 官方 Material Color Utilities 生成色阶。系统配色直接采用 Android 的壁纸动态色；自选背景使用官方图片取色算法。Android 12 以下使用 Material 标准配色。"
                         android:textColor="?attr/colorOnTertiaryContainer"
                         android:textSize="14sp" />
                 </com.google.android.material.card.MaterialCardView>
+<com.google.android.material.button.MaterialButton android:id="@+id/schedule_tools" style="@style/Widget.Material3.Button.TonalButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:minHeight="52dp" android:text="日历导入与上课提醒" app:icon="@drawable/ic_m3_calendar_month" />
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
     </LinearLayout>

@@ -18,9 +18,6 @@ object ThemeManager {
         when (ThemePreferences.getTheme(activity)) {
             GlobalSetting.THEME_COURSE -> applySeedTheme(activity, ThemePreferences.getCourseSeed(activity))
             GlobalSetting.THEME_WALLPAPER -> applySeedTheme(activity, ThemePreferences.getWallpaperSeed(activity))
-            GlobalSetting.THEME_GREEN -> activity.setTheme(R.style.AppTheme_Green)
-            GlobalSetting.THEME_BLUE -> activity.setTheme(R.style.AppTheme_Blue)
-            GlobalSetting.THEME_ROSE -> activity.setTheme(R.style.AppTheme_Rose)
             else -> Unit // AppTheme + DynamicColors handles the system option.
         }
     }
@@ -28,7 +25,7 @@ object ThemeManager {
     @SuppressLint("RestrictedApi") // Pinned Material 1.11 official palette and resource pipeline.
     private fun applySeedTheme(activity: Activity, seed: Int) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-            activity.setTheme(R.style.AppTheme_Green)
+            activity.setTheme(R.style.AppTheme)
             return
         }
         // Android's tonal scheme keeps containers at light/dark role tones rather
@@ -36,7 +33,7 @@ object ThemeManager {
         val scheme = SchemeTonalSpot(Hct.fromInt(seed), isNight(activity), 0.0)
         val applied = ColorResourcesOverride.getInstance()?.applyIfPossible(activity,
             MaterialColorUtilitiesHelper.createColorResourcesIdsToColorValues(scheme)) == true
-        if (!applied) activity.setTheme(R.style.AppTheme_Green)
+        if (!applied) activity.setTheme(R.style.AppTheme)
     }
 
     fun paletteKey(activity: Activity): String {

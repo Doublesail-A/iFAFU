@@ -85,6 +85,8 @@ class TimetableActivity : BaseActivity(), View.OnClickListener {
         contentBinding = binding.content
         drawerBinding = binding.drawer
         setContentView(binding.root)
+        contentBinding.root.setBackgroundColor(com.google.android.material.color.MaterialColors.getColor(
+            contentBinding.root, com.google.android.material.R.attr.colorSurface) or (0xff shl 24))
         setLightUiBar()
 
         initView()
@@ -198,6 +200,11 @@ class TimetableActivity : BaseActivity(), View.OnClickListener {
             true
         }
 
+        drawerBinding.scheduleToolsMenu.setOnClickListener {
+            val selected = mPreviewAdapter.getSelected()
+            startActivity(Intent(this, cn.ifafu.ifafu.schedule.ScheduleToolsActivity::class.java)
+                .putExtra("year", selected?.year).putExtra("term", selected?.term))
+        }
         drawerBinding.settingMenu.setOnClickListener(this)
         drawerBinding.timeMenu.setOnClickListener(this)
         drawerBinding.backgroundMenu.setOnClickListener(this)

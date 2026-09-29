@@ -44,7 +44,7 @@ abstract class OpeningDayDao {
         if (openingDay != null) {
             return openingDay.firstWeek
         }
-        return if (year.isBlank() || term.isBlank() || year.matches("[0-9]{4}-[0-9]{4}".toRegex())) {
+        return if (year.isBlank() || term.isBlank() || !year.matches("[0-9]{4}-[0-9]{4}".toRegex())) {
             val current = Calendar.getInstance()
             if (term == "1") {
                 "${current.get(Calendar.YEAR)}-09-01"

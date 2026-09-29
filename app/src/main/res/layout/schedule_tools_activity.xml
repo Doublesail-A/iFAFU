@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:background="?attr/colorSurface"
+  android:orientation="vertical">
+  <com.google.android.material.appbar.MaterialToolbar
+    android:id="@+id/schedule_toolbar"
+    android:layout_width="match_parent"
+    android:layout_height="64dp"
+    app:title="日历与提醒"
+    app:navigationIcon="@drawable/ic_m3_arrow_back"
+    app:navigationIconTint="?attr/colorOnSurface"
+    app:titleTextColor="?attr/colorOnSurface" />
+  <androidx.core.widget.NestedScrollView
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1"
+    android:clipToPadding="false">
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:padding="20dp"
+      android:orientation="vertical">
+      <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
+        <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:padding="20dp"
+          android:orientation="vertical">
+          <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:text="按时出发"
+            android:textSize="24sp"
+            android:textColor="?attr/colorOnSurface" />
+          <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:text="提醒保存在手机上，不需要服务器。刷新课表或考试后会自动更新。"
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnSurfaceVariant" />
+          <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/course_reminder"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:text="上课前 15 分钟"
+            android:textAppearance="@style/TextAppearance.Material3.BodyLarge" />
+          <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/exam_reminder"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:text="考试前 30 分钟"
+            android:textAppearance="@style/TextAppearance.Material3.BodyLarge" />
+          <TextView
+            android:id="@+id/reminder_status_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+          <com.google.android.material.button.MaterialButton
+            android:id="@+id/reminder_status"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:minHeight="52dp"
+            android:text="正在准备提醒" />
+          <com.google.android.material.button.MaterialButton
+            android:id="@+id/reminder_test"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:minHeight="52dp"
+            android:text="30 秒后测试通知" />
+          <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:text="允许通知和准时提醒后，关闭应用仍可提醒。手机重启后会恢复。强行停止应用会暂停提醒，需要重新打开；部分系统还需允许后台运行。"
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnSurfaceVariant" />
+        </LinearLayout>
+      </com.google.android.material.card.MaterialCardView>
+      <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
+        <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:padding="20dp"
+          android:orientation="vertical">
+          <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:text="让日程随身同行"
+            android:textSize="24sp"
+            android:textColor="?attr/colorOnSurface" />
+          <TextView
+            android:id="@+id/calendar_summary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:text="正在读取当前学期"
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnSurfaceVariant" />
+          <com.google.android.material.button.MaterialButton
+            android:id="@+id/calendar_import"
+            style="@style/Widget.Material3.Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:minHeight="52dp"
+            android:text="导入本机彩色日历"
+            app:icon="@drawable/ic_m3_calendar_month" />
+          <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:text="每门课建立一个独立日历，并保留颜色。支持 Google 日历 Android 等读取系统日历的软件；这些是本机日历，不会自动同步到 Google 云端。"
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnSurfaceVariant" />
+          <com.google.android.material.button.MaterialButton
+            android:id="@+id/calendar_ics"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:minHeight="52dp"
+            android:text="导出完整课表 · ICS" />
+          <com.google.android.material.button.MaterialButton
+            android:id="@+id/calendar_zip"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:minHeight="52dp"
+            android:text="分课程导出 · ZIP" />
+          <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:text="ICS 可导入其他日历。Google 日历网页版不读取 ICS 颜色；ZIP 为每门课提供独立文件，导入各自的日历后可分别设色。再次导入本机日历会更新本学期课程，不会重复添加。"
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnSurfaceVariant" />
+        </LinearLayout>
+      </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+  </androidx.core.widget.NestedScrollView>
+</LinearLayout>

@@ -31,6 +31,10 @@ abstract class BaseActivity : AppCompatActivity {
         ThemeManager.apply(this)
         appliedPaletteKey = ThemeManager.paletteKey(this)
         super.onCreate(savedInstanceState)
+        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(
+            MaterialColors.getColor(this, com.google.android.material.R.attr.colorSurface,
+                android.graphics.Color.WHITE) or (0xff shl 24)))
     }
 
     override fun onResume() {
@@ -102,17 +106,12 @@ abstract class BaseActivity : AppCompatActivity {
     }
 
     protected open fun snackbar(message: String) {
-        Snackbar.make(window.decorView, message, Snackbar.LENGTH_SHORT).show()
+        Snackbar.make(findViewById<View>(android.R.id.content), message, Snackbar.LENGTH_LONG)
+            .setTextMaxLines(4).show()
     }
 
     protected open fun showToast(message: String) {
-        if (toast != null) {
-            toast?.cancel()
-        }
-        toast = Toast.makeText(application, message, Toast.LENGTH_SHORT).apply {
-            setGravity(Gravity.CENTER, 0, 0)
-            show()
-        }
+        snackbar(message)
     }
 
     fun <T> LiveData<Resource<T>>.observeResource(

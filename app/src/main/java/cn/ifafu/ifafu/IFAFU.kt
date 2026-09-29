@@ -18,6 +18,7 @@ import timber.log.Timber
 
 @HiltAndroidApp
 class IFAFU : Application() {
+    @javax.inject.Inject lateinit var scheduleRepository: cn.ifafu.ifafu.schedule.ScheduleRepository
 
     override fun onCreate() {
         super.onCreate()
@@ -25,6 +26,7 @@ class IFAFU : Application() {
             ThemePreferences.getTheme(this) == GlobalSetting.THEME_SYSTEM
         }
         Timber.plant(Timber.DebugTree())
+        scheduleRepository.start()
     }
 
     companion object {

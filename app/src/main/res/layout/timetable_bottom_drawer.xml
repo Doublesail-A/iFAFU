@@ -119,5 +119,6 @@
                 app:iconGravity="top"
                 app:iconPadding="5dp" />
         </LinearLayout>
+<com.google.android.material.button.MaterialButton android:id="@+id/scheduleToolsMenu" style="@style/Widget.Material3.Button.TextButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:minHeight="52dp" android:text="日历导入与提醒" app:icon="@drawable/ic_m3_calendar_month" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

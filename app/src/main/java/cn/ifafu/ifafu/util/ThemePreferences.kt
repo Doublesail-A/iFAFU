@@ -11,18 +11,15 @@ object ThemePreferences {
     private const val KEY_COURSE_SEED = "course_seed"
     private const val KEY_WALLPAPER_SEED = "wallpaper_seed"
     private const val KEY_COURSE_DEFAULT_MIGRATED = "course_default_migrated_v2"
-    private const val DEFAULT_COURSE_SEED = 0xFF8AD297.toInt()
+    private const val DEFAULT_COURSE_SEED = 0xFF6750A4.toInt()
 
     val modes = intArrayOf(
         GlobalSetting.THEME_COURSE,
         GlobalSetting.THEME_WALLPAPER,
-        GlobalSetting.THEME_SYSTEM,
-        GlobalSetting.THEME_GREEN,
-        GlobalSetting.THEME_BLUE,
-        GlobalSetting.THEME_ROSE
+        GlobalSetting.THEME_SYSTEM
     )
 
-    val labels = arrayOf("随课程变化", "壁纸取色", "跟随系统", "竹青", "晴空", "樱粉")
+    val labels = arrayOf("下一节课 · Material 动态配色", "所选背景 · Material 动态配色", "系统壁纸 · Android 原生配色")
 
     fun getTheme(context: Context): Int {
         val preferences = context.applicationContext
@@ -36,7 +33,7 @@ object ThemePreferences {
         }
         val value = preferences
             .getInt(KEY_MODE, GlobalSetting.THEME_COURSE)
-        return if (value in modes) value else GlobalSetting.THEME_COURSE
+        return if (value in modes) value else GlobalSetting.THEME_SYSTEM
     }
 
     fun setTheme(context: Context, theme: Int) {

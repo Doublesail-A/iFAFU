@@ -73,8 +73,8 @@ class CourseColorPaletteTest {
         val names = (1..12).map { "课程$it" }
         val colors = CourseColors(CourseColorPalette.allocate(names, emptyMap()))
         names.forEach {
-            assertEquals(85.0, Hct.fromInt(colors.displayColorFor(it, false)).tone, 0.5)
-            assertEquals(34.0, Hct.fromInt(colors.displayColorFor(it, true)).tone, 0.5)
+            assertEquals(90.0, Hct.fromInt(colors.displayColorFor(it, false)).tone, 0.5)
+            assertEquals(30.0, Hct.fromInt(colors.displayColorFor(it, true)).tone, 0.5)
             assertEquals(colors.seedFor(it), colors.seedFor("[调课]$it"))
         }
     }

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
-    android:src="@drawable/fafu_logo"
-    android:gravity="fill" />
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item><shape><solid android:color="#FFFFFF" /></shape></item>
+    <item android:left="8dp" android:top="8dp" android:right="8dp" android:bottom="8dp"><bitmap android:src="@drawable/fafu_logo" android:gravity="fill" /></item>
+</layer-list>

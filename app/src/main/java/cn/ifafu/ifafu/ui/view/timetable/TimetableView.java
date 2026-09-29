@@ -340,7 +340,9 @@ public class TimetableView extends GridLayout {
                 : courseColor;
         int foreground = urgent
                 ? resolveColor(com.google.android.material.R.attr.colorOnErrorContainer, 0xFF410002)
-                : resolveColor(com.google.android.material.R.attr.colorOnSurface, contrastColor(background));
+                : config.colorPool instanceof cn.ifafu.ifafu.ui.timetable.MaterialCourseColorPool
+                    ? ((cn.ifafu.ifafu.ui.timetable.MaterialCourseColorPool) config.colorPool).getForegroundColor(item.name)
+                    : resolveColor(com.google.android.material.R.attr.colorOnSurface, contrastColor(background));
         view.setTextColor(foreground);
         view.setBackground(createCourseBackground(background, urgent));
     }
