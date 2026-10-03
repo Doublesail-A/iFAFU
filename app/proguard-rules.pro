@@ -152,3 +152,12 @@
 -dontwarn org.openjsse.javax.net.ssl.SSLSocket
 -dontwarn org.openjsse.net.ssl.OpenJSSE
 -dontwarn springfox.documentation.spring.web.json.Json
+
+# The separate instrumentation APK calls tracing and Kotlin runtime APIs.
+# Preserve their public binary interface in the minified target APK.
+-keep class androidx.tracing.Trace { public *; }
+-keep class kotlin.** { public *; }
+
+# Keep the public schedule interfaces used by external device verification.
+-keep class cn.ifafu.ifafu.schedule.** { public *; }
+-keep class com.blankj.utilcode.util.SPUtils { public *; }

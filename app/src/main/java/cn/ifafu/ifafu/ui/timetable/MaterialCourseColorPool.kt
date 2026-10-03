@@ -4,29 +4,54 @@ import android.content.Context
 import android.content.res.Configuration
 import android.view.View
 import cn.ifafu.ifafu.util.ColorPool
+import com.google.android.material.color.utilities.ColorUtils
+import com.google.android.material.color.utilities.Contrast
 import com.google.android.material.color.utilities.Hct
 import com.google.android.material.color.utilities.SchemeTonalSpot
-import com.google.android.material.color.utilities.SchemeVibrant
-import com.google.android.material.color.utilities.SchemeExpressive
-import com.google.android.material.color.utilities.DynamicScheme
-import com.google.android.material.color.utilities.Score
-import com.google.android.material.color.utilities.MaterialDynamicColors
 import java.util.Locale
 
-/** One persistent identity per subject; scheduling annotations never change its color. */
+/** Persistent subject identities with classic Material hue families and native tonal palettes. */
 object CourseColorPalette {
     private val annotation = Regex(
         "^(?:[\\[【（(「『]\\s*(?:调课|补课|停课|重修)\\s*[\\]】）)」』]\\s*)+"
     )
-    // Material reference color families are inputs, never hand-tuned UI colors.
-    // Google MCU chooses chroma, light/dark tone and the matching label role.
-    private val references = intArrayOf(0xff6750a4.toInt(), 0xff009688.toInt(),
-        0xffe91e63.toInt(), 0xff3f51b5.toInt(), 0xffff9800.toInt(),
-        0xff4caf50.toInt(), 0xff9c27b0.toInt(), 0xff03a9f4.toInt(),
-        0xffff5722.toInt(), 0xffcddc39.toInt(), 0xff673ab7.toInt(),
-        0xff00bcd4.toInt(), 0xfff44336.toInt(), 0xff8bc34a.toInt(),
-        0xff2196f3.toInt(), 0xffffc107.toInt(), 0xff795548.toInt(),
-        0xff607d8b.toInt(), 0xffffeb3b.toInt())
+    // Classic Material 300 references retain distinct hue families.
+    // Google's SchemeTonalSpot supplies the restrained chroma; no custom color
+    // extraction, RGB blending or HCT hue/chroma formula is used.
+    // Tone 70 keeps course blocks stronger than pale tone-90 theme containers.
+    private val references = intArrayOf(
+        0xff64b5f6.toInt(), // Blue
+        0xffffb74d.toInt(), // Orange
+        0xffba68c8.toInt(), // Purple
+        0xff4db6ac.toInt(), // Teal
+        0xffa1887f.toInt(), // Brown
+        0xff7986cb.toInt(), // Indigo
+        0xff81c784.toInt(), // Green
+        0xffff8a65.toInt(), // Deep Orange
+        0xff4dd0e1.toInt(), // Cyan
+        0xff4fc3f7.toInt(), // Light Blue
+        0xffffd54f.toInt(), // Amber
+        0xffdce775.toInt(), // Lime
+        0xffe57373.toInt(), // Red
+        0xff9575cd.toInt(), // Deep Purple
+        0xfff06292.toInt(), // Pink
+        0xffaed581.toInt(), // Light Green
+        0xff90a4ae.toInt(), // Blue Grey
+        0xfffff176.toInt(), // Yellow
+        0xffe0e0e0.toInt(), // Grey
+    )
+    private val palettes = references.mapIndexed { index, reference ->
+        val scheme = SchemeTonalSpot(Hct.fromInt(reference), false, 0.0)
+        // Achromatic references use native neutral roles instead of inventing
+        // a hue from a grey seed, which can duplicate a cyan course color.
+        when (index) {
+            16 -> scheme.secondaryPalette // Blue Grey
+            18 -> scheme.neutralPalette // Grey
+            else -> scheme.primaryPalette
+        }
+    }
+    private val lightTones = intArrayOf(70, 75, 65, 80, 60)
+    private val darkTones = intArrayOf(40, 45, 35, 50, 30)
 
     @JvmStatic
     fun identity(name: String): String = name.trim().replace(annotation, "")
@@ -65,77 +90,26 @@ object CourseColorPalette {
         return CourseColors(assigned)
     }
 
-    // Official Score selects separated source hues; merely different RGB values
-    // are insufficient when pale containers look alike. No custom hue-distance rule.
-    private val seeds: List<Int> by lazy {
-        val roles = MaterialDynamicColors()
-        val candidates = linkedMapOf<Int, Int>()
-        references.forEach { reference ->
-            val hct = Hct.fromInt(reference)
-            listOf(SchemeTonalSpot(hct, false, 0.0), SchemeExpressive(hct, false, 0.0),
-                SchemeVibrant(hct, false, 0.0)).forEach { scheme ->
-                listOf(roles.primary(), roles.secondary(), roles.tertiary()).forEach {
-                    candidates[it.getArgb(scheme)] = 1
-                }
-            }
-        }
-        Score.score(candidates, 16, 0xff6750a4.toInt(), true)
+    internal fun color(index: Int, dark: Boolean): Int {
+        val family = index % palettes.size
+        val round = (index / palettes.size) % lightTones.size
+        return palettes[family].tone(if (dark) darkTones[round] else lightTones[round])
     }
-    internal fun seed(index: Int): Int = seeds[index % seeds.size]
-    internal fun family(index: Int): Int = index / seeds.size
+
+    internal fun foreground(background: Int): Int {
+        val tone = ColorUtils.lstarFromArgb(background)
+        // MCU's WCAG contrast calculation chooses legible ink without tinting
+        // or blending the course background into a pale theme container.
+        return if (Contrast.ratioOfTones(tone, 100.0) >= Contrast.ratioOfTones(tone, 0.0))
+            0xffffffff.toInt() else 0xff000000.toInt()
+    }
 }
 
 class CourseColors internal constructor(private val assignments: Map<String, Int>) {
-    private data class Token(val light: Int, val dark: Int, val lightText: Int, val darkText: Int, val seed: Int)
-    // Generate each persistent slot in order, including slots absent from this view.
-    // If MCU quantizes two similar source hues into one color, try another official
-    // role/scheme. This avoids collisions without inventing HCT hue/chroma/tone math.
-    private val tokens: List<Token> = synchronized(tokenCache) {
-        tokenCache.getOrPut(assignments.values.maxOrNull() ?: 0) { buildList {
-        val usedLight = mutableSetOf<Int>()
-        val usedDark = mutableSetOf<Int>()
-        val usedSeeds = mutableSetOf<Int>()
-        val roles = MaterialDynamicColors()
-        for (index in 0..(assignments.values.maxOrNull() ?: 0)) {
-            val source = Hct.fromInt(CourseColorPalette.seed(index))
-            var selected: Token? = null
-            for (variant in 0..2) {
-                fun scheme(dark: Boolean): DynamicScheme = when (variant) {
-                    1 -> SchemeExpressive(source, dark, 0.0)
-                    2 -> SchemeVibrant(source, dark, 0.0)
-                    else -> SchemeTonalSpot(source, dark, 0.0)
-                }
-                for (offset in 0..2) {
-                    val family = (CourseColorPalette.family(index) + offset) % 3
-                    val background = when (family) { 1 -> roles.tertiaryContainer(); 2 -> roles.secondaryContainer(); else -> roles.primaryContainer() }
-                    val foreground = when (family) { 1 -> roles.onTertiaryContainer(); 2 -> roles.onSecondaryContainer(); else -> roles.onPrimaryContainer() }
-                    val accent = when (family) { 1 -> roles.tertiary(); 2 -> roles.secondary(); else -> roles.primary() }
-                    val light = scheme(false); val dark = scheme(true)
-                    val candidate = Token(background.getArgb(light), background.getArgb(dark),
-                        foreground.getArgb(light), foreground.getArgb(dark), accent.getArgb(light))
-                    if (candidate.light !in usedLight && candidate.dark !in usedDark && candidate.seed !in usedSeeds) {
-                        selected = candidate; break
-                    }
-                }
-                if (selected != null) break
-            }
-            // Finite reference palette; unusually large histories reuse an official
-            // family. A normal semester has far fewer slots than this palette.
-            val token = selected ?: Token(roles.primaryContainer().getArgb(SchemeTonalSpot(source, false, 0.0)),
-                roles.primaryContainer().getArgb(SchemeTonalSpot(source, true, 0.0)),
-                roles.onPrimaryContainer().getArgb(SchemeTonalSpot(source, false, 0.0)),
-                roles.onPrimaryContainer().getArgb(SchemeTonalSpot(source, true, 0.0)),
-                roles.primary().getArgb(SchemeTonalSpot(source, false, 0.0)))
-            add(token); usedLight.add(token.light); usedDark.add(token.dark); usedSeeds.add(token.seed)
-        }
-    }
-        }
-    }
-    private companion object { val tokenCache = mutableMapOf<Int, List<Token>>() }
-    private fun token(name: String) = tokens[assignments[CourseColorPalette.identity(name)] ?: 0]
-    fun seedFor(name: String): Int = token(name).seed
-    fun displayColorFor(name: String, dark: Boolean): Int = token(name).let { if (dark) it.dark else it.light }
-    fun textColorFor(name: String, dark: Boolean): Int = token(name).let { if (dark) it.darkText else it.lightText }
+    private fun index(name: String) = assignments[CourseColorPalette.identity(name)] ?: 0
+    fun seedFor(name: String): Int = CourseColorPalette.color(index(name), false)
+    fun displayColorFor(name: String, dark: Boolean): Int = CourseColorPalette.color(index(name), dark)
+    fun textColorFor(name: String, dark: Boolean): Int = CourseColorPalette.foreground(displayColorFor(name, dark))
 }
 
 class MaterialCourseColorPool(view: View, private val colors: CourseColors) : ColorPool {

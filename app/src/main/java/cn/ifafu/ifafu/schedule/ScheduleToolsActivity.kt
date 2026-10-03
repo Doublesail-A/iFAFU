@@ -2,10 +2,12 @@ package cn.ifafu.ifafu.schedule
 
 import android.Manifest
 import android.content.Intent
+import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
@@ -16,6 +18,7 @@ import cn.ifafu.ifafu.ui.common.BaseActivity
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.materialswitch.MaterialSwitch
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -28,9 +31,10 @@ class ScheduleToolsActivity : BaseActivity() {
     @Inject lateinit var repository: ScheduleRepository
     private var snapshot: ScheduleSnapshot? = null
     private var busy = false
-    private val notifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+    private val notifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         refreshStatus()
         ReminderScheduler.scheduleNext(this)
+        if (granted) explainExactPermission()
     }
     private val calendar = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
         if (grants.values.all { it }) importCalendar()
@@ -57,8 +61,11 @@ class ScheduleToolsActivity : BaseActivity() {
             setOnCheckedChangeListener { _, checked -> enable("exam", checked) }
         }
         button(R.id.reminder_status).setOnClickListener { requestDeliveryPermissions() }
+        button(R.id.reminder_background).setOnClickListener { explainBackgroundSettings() }
         button(R.id.reminder_test).setOnClickListener {
-            if (!ReminderScheduler.allowed(this)) { requestDeliveryPermissions(); return@setOnClickListener }
+            if (!ReminderScheduler.allowed(this) || !ReminderScheduler.exact(this)) {
+                requestDeliveryPermissions(); return@setOnClickListener
+            }
             ReminderScheduler.test(this)
             snackbar("30 秒后发送测试通知，可以返回桌面验证")
         }
@@ -94,6 +101,9 @@ class ScheduleToolsActivity : BaseActivity() {
     private fun button(id: Int) = findViewById<MaterialButton>(id)
     private fun refreshStatus() {
         findViewById<TextView>(R.id.reminder_status_text).text = ReminderScheduler.status(this)
+        val optimized = Build.VERSION.SDK_INT >= 23 &&
+            !(getSystemService(Context.POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(packageName)
+        button(R.id.reminder_background).text = if (optimized) "后台与电池设置" else "后台设置 · 已无电池限制"
         button(R.id.reminder_status).text = when {
             !ReminderScheduler.allowed(this) -> "允许通知"
             !ReminderScheduler.exact(this) -> "允许准时提醒"
@@ -102,7 +112,7 @@ class ScheduleToolsActivity : BaseActivity() {
     }
     private fun enable(kind: String, checked: Boolean) {
         ReminderScheduler.setEnabled(this, kind, checked)
-        if (checked && !ReminderScheduler.allowed(this)) requestDeliveryPermissions()
+        if (checked && (!ReminderScheduler.allowed(this) || !ReminderScheduler.exact(this))) requestDeliveryPermissions()
         refreshStatus()
     }
     private fun requestDeliveryPermissions() {
@@ -112,10 +122,31 @@ class ScheduleToolsActivity : BaseActivity() {
             !ReminderScheduler.allowed(this) ->
                 startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
             Build.VERSION.SDK_INT >= 31 && !ReminderScheduler.exact(this) ->
-                startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + packageName)))
+                explainExactPermission()
             else -> startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
         }
     }
+    private fun explainExactPermission() {
+        if (Build.VERSION.SDK_INT < 31 || ReminderScheduler.exact(this)) return
+        MaterialAlertDialogBuilder(this)
+            .setTitle("让提醒按时送达")
+            .setMessage("请允许“闹钟和提醒”。上课前 15 分钟、考试前 30 分钟的提醒由 Android 系统触发，退出应用也能收到；未允许时系统可能延迟提醒。")
+            .setPositiveButton("去允许") { _, _ ->
+                startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + packageName)))
+            }
+            .setNegativeButton("稍后", null).show()
+    }
+
+    private fun explainBackgroundSettings() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("后台提醒设置")
+            .setMessage("如果允许准时提醒后，清理后台仍收不到通知，请在应用信息的电池设置中选择“不受限制”，并开启手机系统提供的自启动权限。\n\n无需让 iFAFU 一直开着。系统设置中的“强行停止”会取消闹钟，之后需重新打开应用。")
+            .setPositiveButton("打开应用信息") { _, _ ->
+                startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + packageName)))
+            }
+            .setNegativeButton("关闭", null).show()
+    }
+
     private fun updateButtons() {
         val ready = !busy && snapshot?.courses?.isNotEmpty() == true
         listOf(R.id.calendar_import, R.id.calendar_ics, R.id.calendar_zip).forEach { button(it).isEnabled = ready }

@@ -69,13 +69,25 @@ class CourseColorPaletteTest {
         assertEquals(merged, CourseColorPalette.allocate(merged.keys, merged))
     }
 
-    @Test fun equalPerceptualToneKeepsLabelsConsistentAcrossHues() {
-        val names = (1..12).map { "课程$it" }
-        val colors = CourseColors(CourseColorPalette.allocate(names, emptyMap()))
-        names.forEach {
-            assertEquals(90.0, Hct.fromInt(colors.displayColorFor(it, false)).tone, 0.5)
-            assertEquals(30.0, Hct.fromInt(colors.displayColorFor(it, true)).tone, 0.5)
-            assertEquals(colors.seedFor(it), colors.seedFor("[调课]$it"))
+    @Test fun nativePalettesBalanceChromaAndAccessibleLabels() {
+        val names = (0 until 95).map { "课程" + it }
+        val colors = CourseColors(names.associate { CourseColorPalette.identity(it) to names.indexOf(it) })
+        listOf(false, true).forEach { dark ->
+            assertEquals("Collisions: " + names.groupBy { colors.displayColorFor(it, dark) }.filterValues { it.size > 1 }.values, 95, names.map { colors.displayColorFor(it, dark) }.toSet().size)
+            names.forEach {
+                val background = Hct.fromInt(colors.displayColorFor(it, dark))
+                val text = Hct.fromInt(colors.textColorFor(it, dark))
+                assertTrue(com.google.android.material.color.utilities.Contrast.ratioOfTones(background.tone, text.tone) >= 4.5)
+                assertEquals(colors.displayColorFor(it, dark), colors.displayColorFor("[调课]" + it, dark))
+            }
+        }
+        assertEquals(70.0, Hct.fromInt(colors.displayColorFor("课程0", false)).tone, 0.5)
+        assertEquals(40.0, Hct.fromInt(colors.displayColorFor("课程0", true)).tone, 0.5)
+        // The softer visible course color also seeds the app theme and calendars.
+        assertEquals(colors.displayColorFor("课程0", false), colors.seedFor("课程0"))
+        names.take(19).forEach {
+            assertTrue(Hct.fromInt(colors.displayColorFor(it, false)).chroma < 38.0)
+            assertTrue(Hct.fromInt(colors.displayColorFor(it, true)).chroma < 38.0)
         }
     }
 

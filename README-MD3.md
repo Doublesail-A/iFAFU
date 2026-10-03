@@ -9,15 +9,15 @@
 - Material 3 顶栏、侧栏和主页 / 成绩 / 选修底栏。
 - 主页显示接下来两门今日课程、上下课倒计时和下一场考试。
 - 独立周课表、课程详情完整周次、成绩和选修查询。
-- 移除旧版样式切换、反馈问题和信息平台入口。
-- FAFU 应用图标使用白色背景，并为黄色徽章留出边距。
+- 移除旧版样式切换、反馈问题、信息平台和校园百事通入口。
+- FAFU 应用图标保留白底，缩薄外围留边：自适应图标 inset 从 22dp 改为 14dp，旧系统外部留边从 8dp 改为 3dp。
 - 官方 CircularProgressIndicator、Material 对话框和 Snackbar 提示。
 
 默认使用下一节尚未开始的课的主色，跨日、跨周寻找实际有课的日期。主题只保留“下一节课”“所选背景”“系统壁纸”三个来源，删除竹青、晴空、樱粉和对应的固定颜色资源。
 
 系统壁纸主题直接采用 Android DynamicColors。手动背景使用 Material Components 内置的 **Celebi 量化 + Score 评分**；自定义主题使用官方 **SchemeTonalSpot** 和颜色资源覆盖管线。Android 12 以下回退到 Material 标准主题。
 
-课程去除调课、补课等标记后使用持久的课程身份。Material 参考色只作为源色，Google 官方 Score 筛选彼此分离的颜色来源；容器色、文字色和强调色均由 Google Material Color Utilities 生成，不手调 HCT 色相、饱和度或明度。检测官方色阶量化后的颜色碰撞后，尝试其他官方角色或方案。课表浅色、深色分别使用对应 container / onContainer；15 分钟内上课的课程使用 errorContainer 提示。
+课程去除调课、补课等标记后使用持久的课程身份。课表取自 [传统 Material 色表](https://m1.material.io/style/color.html) 的 300 色阶参考色，并由 Google 官方 SchemeTonalSpot 生成较克制的色彩。主要课程浅色采用 tone 70，深色采用 tone 40，比泛白的 tone 90 container 清晰，同时降低强烈实色的饱和度。历史课程使用官方 tonal palette 的相邻色阶扩展，前 95 个持久槽位分别拥有不同颜色；文字由 Google MCU 的 WCAG 对比度算法选择黑白，测试确保至少 4.5:1。调课和原课共用颜色，主题和日历使用对应的课程色。全局主题继续使用官方动态配色；15 分钟内上课的课程仍使用 MD3 errorContainer 提示。
 
 课表始终有不透明的 colorSurface 底层，手选图片叠在底层上，再绘制网格和课程；不会显示手机桌面壁纸。
 
@@ -28,9 +28,9 @@
 - 课程开始前 15 分钟，包含名称、时间和教室。
 - 考试开始前 30 分钟，包含科目、时间、考场和座位。
 
-使用 Android AlarmManager + NotificationCompat，无需服务器或推送账号。课程、考试、调课、开学日和课表设置更新后自动重排。磁盘缓存和重启接收器支持进程退出、重启、应用升级和时区变化。重复调度不会重复发送已送达的提醒。
+使用 Android AlarmManager + NotificationCompat，无需服务器或推送账号。课程、考试、调课、开学日和课表设置更新后自动重排。磁盘缓存和重启接收器支持进程退出、重启、应用升级和时区变化。后台闹钟唤醒应用时，不初始化数据库与网络仓库；接收器同步读取队列、发送通知并登记下一次闹钟；不会启动可能覆盖队列的数据库刷新。数据库观察器只在界面打开后启动。重复调度不会重复发送已送达的提醒。
 
-Android 13+ 需要允许通知，Android 12+ 需要允许“闹钟和提醒”以准时触发；未允许精确闹钟时使用系统允许的非精确闹钟。界面显示权限状态，并提供 30 秒后测试通知。部分厂商需允许后台运行。强行停止应用会暂停 Android 闹钟，需要重新打开。提醒仅基于已经获取到本机的数据，请先刷新课程和考试。
+Android 13+ 需要允许通知，Android 12+ 需要允许“闹钟和提醒”以准时触发；未允许精确闹钟时使用系统允许的非精确闹钟。启用提醒时依次引导通知权限和准时闹钟权限，界面显示未授权造成的延迟，并提供 30 秒后测试通知与后台、电池设置入口。未实际提交成功的通知不会标记为已送达。部分厂商需允许自启动、后台运行或设置电池“不受限制”。[Android 系统闹钟](https://developer.android.com/develop/background-work/services/alarms) 可在进程不存在时触发；强行停止应用会暂停 Android 闹钟，需要重新打开。提醒仅基于已经获取到本机的数据，请先刷新课程和考试。
 
 ## 彩色日历
 
@@ -53,9 +53,13 @@ JDK 17、Android SDK 34、Build Tools 34.0.0、Gradle 8.2；AGP 8.2.2、Kotlin 1
 ./gradlew :app:testDebugUnitTest --tests 'cn.ifafu.ifafu.ui.timetable.CourseColorPaletteTest' --tests 'cn.ifafu.ifafu.schedule.ScheduleEventsTest'
 ./gradlew :app:assembleDebugAndroidTest
 ./gradlew :app:assembleRelease
+# Optional: integration tests against the minified release
+./gradlew :app:assembleReleaseAndroidTest -PintegrationBuildType=release
 ```
 
-Windows 使用 gradlew.bat，SDK 路径放在 local.properties 或 ANDROID_SDK_ROOT，不提交本机路径。设备集成测试验证实际 CalendarProvider 彩色导入与重复导入，以及系统闹钟的课程、考试通知。运行设备测试需要日历、通知和准时闹钟权限，使用独立测试设备。
+Windows 使用 gradlew.bat，SDK 路径放在 local.properties 或 ANDROID_SDK_ROOT，不提交本机路径。设备集成测试验证实际 CalendarProvider 彩色导入与重复导入，以及系统闹钟的课程、考试通知。`prepareProcessDeathReminders` 接受 `coldStartDelayMs` 参数，在独立空白测试设备安排两次提醒；结束 instrumentation 并使用 `am kill` 确认进程不存在后，检查两条系统通知的名称、教室、考场和座位。普通测试运行会跳过此准备方法。参数 `coldStartTogether=true` 将两条提醒安排在同一闹钟批次，供深度休眠验证，避免连续短间隔闹钟受 Android 的休眠配额延迟；普通用户的提醒仍按各自时间安排。使用 `clearProcessDeathReminders` 和 `coldStartCleanup=true` 清理测试数据。运行设备测试需要日历、通知和准时闹钟权限，使用独立测试设备。
+
+md3.4 已通过 12 项独立单元测试、Debug/Release 编译及 Release APK 签名验证。Android 15 独立测试设备验证了进程退出后连续两次提醒；最终混淆 Release 在确认进程不存在且 `deviceidle` 处于 `IDLE` 后，也实际收到了包含教室、考场和座位的课程、考试通知。
 
 测试版包名为 cn.ifafu.ifafu.debug，可与原版共存。缺少 key-release.properties 时，Release 使用开发签名，不能覆盖官方不同签名的安装包。正式发布应配置自己的签名。
 

@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<inset xmlns:android="http://schemas.android.com/apk/res/android" android:inset="22dp">
+<inset xmlns:android="http://schemas.android.com/apk/res/android" android:inset="14dp">
     <bitmap android:src="@drawable/fafu_logo" android:gravity="fill" />
 </inset>

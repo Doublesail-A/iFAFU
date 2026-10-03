@@ -101,8 +101,7 @@ class MainNewFragment : BaseFragment(R.layout.main_new_fragment), View.OnClickLi
             MenuVO(R.id.menu_exam_list, R.drawable.ic_m3_event_note, "考试计划"),
             MenuVO(R.id.menu_score_list, R.drawable.ic_m3_grade, "成绩查询"),
             MenuVO(R.id.menu_elective, R.drawable.ic_m3_menu_book, "选修查询"),
-            MenuVO(R.id.menu_web, R.drawable.ic_m3_language, "网页模式"),
-            MenuVO(R.id.menu_boya, R.drawable.ic_m3_smart_toy, "校园百事通")
+            MenuVO(R.id.menu_web, R.drawable.ic_m3_language, "网页模式")
         )
         val menuHandler = MainMenuHandler(requireContext())
         menuAdapter = MenuAdapter {

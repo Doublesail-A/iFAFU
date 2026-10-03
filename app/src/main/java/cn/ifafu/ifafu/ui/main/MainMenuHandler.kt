@@ -3,13 +3,10 @@ package cn.ifafu.ifafu.ui.main
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
-import android.os.Build
 import cn.ifafu.ifafu.R
 import cn.ifafu.ifafu.bean.vo.MenuVO
 import cn.ifafu.ifafu.constant.Constants
 import cn.ifafu.ifafu.ui.activity.AboutActivity
-import cn.ifafu.ifafu.ui.activity.BoyaActivity
 import cn.ifafu.ifafu.ui.elective.ElectiveActivity
 import cn.ifafu.ifafu.ui.electricity.main.ElectricityActivity
 import cn.ifafu.ifafu.ui.examlist.ExamListActivity
@@ -46,15 +43,6 @@ class MainMenuHandler(private val context: Context) {
             }
             R.id.menu_comment -> {
                 startActivityByClazz(CommentActivity::class.java)
-            }
-            R.id.menu_boya -> {
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-                    val intent = Intent(Intent.ACTION_VIEW)
-                    intent.data = Uri.parse(Constants.BOYA_URL)
-                    context.startActivity(intent)
-                } else {
-                    startActivityByClazz(BoyaActivity::class.java)
-                }
             }
             R.id.menu_about_ifafu ->
                 startActivityByClazz(AboutActivity::class.java)

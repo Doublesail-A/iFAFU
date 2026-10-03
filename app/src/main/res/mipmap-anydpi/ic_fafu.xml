@@ -1,4 +1,4 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item><shape><solid android:color="#FFFFFF" /></shape></item>
-    <item android:left="8dp" android:top="8dp" android:right="8dp" android:bottom="8dp"><bitmap android:src="@drawable/fafu_logo" android:gravity="fill" /></item>
+    <item android:left="3dp" android:top="3dp" android:right="3dp" android:bottom="3dp"><bitmap android:src="@drawable/fafu_logo" android:gravity="fill" /></item>
 </layer-list>

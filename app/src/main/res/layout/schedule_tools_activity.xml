@@ -48,7 +48,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="12dp"
-            android:text="提醒保存在手机上，不需要服务器。刷新课表或考试后会自动更新。"
+            android:text="提醒交给 Android 系统闹钟，无需应用保持运行。刷新课表或考试后会自动更新。"
             android:textSize="14sp"
             android:textColor="?attr/colorOnSurfaceVariant" />
           <com.google.android.material.materialswitch.MaterialSwitch
@@ -78,6 +78,14 @@
             android:layout_marginTop="8dp"
             android:minHeight="52dp"
             android:text="正在准备提醒" />
+          <com.google.android.material.button.MaterialButton
+            android:id="@+id/reminder_background"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:minHeight="52dp"
+            android:text="后台与电池设置" />
           <com.google.android.material.button.MaterialButton
             android:id="@+id/reminder_test"
             style="@style/Widget.Material3.Button.TextButton"

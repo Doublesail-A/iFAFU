@@ -101,9 +101,7 @@ class MainOldFragment : BaseFragment(R.layout.main_old_fragment), OnMenuItemClic
             ),
             "实用工具" to mutableListOf(
                 MenuVO(R.id.menu_schedule, R.drawable.menu_syllabus_white, "我的课表"),
-                MenuVO(R.id.menu_web, R.drawable.menu_web_white, "网页模式"),
-//                MenuVO(R.id.menu_repair, R.drawable.main_old_tabs_repair, "报修服务"),
-                MenuVO(R.id.menu_boya, R.drawable.ic_robot_white, "校园百事通")
+                MenuVO(R.id.menu_web, R.drawable.menu_web_white, "网页模式")
             ),
             "软件设置" to mutableListOf(
                 MenuVO(R.id.menu_setting, R.drawable.menu_setting_white, "软件设置"),

@@ -18,7 +18,7 @@ import timber.log.Timber
 
 @HiltAndroidApp
 class IFAFU : Application() {
-    @javax.inject.Inject lateinit var scheduleRepository: cn.ifafu.ifafu.schedule.ScheduleRepository
+    @javax.inject.Inject lateinit var scheduleRepository: dagger.Lazy<cn.ifafu.ifafu.schedule.ScheduleRepository>
 
     override fun onCreate() {
         super.onCreate()
@@ -26,7 +26,8 @@ class IFAFU : Application() {
             ThemePreferences.getTheme(this) == GlobalSetting.THEME_SYSTEM
         }
         Timber.plant(Timber.DebugTree())
-        scheduleRepository.start()
+        // Alarm broadcasts must read the persisted queue before any database refresh.
+        // The observer starts when an Activity is created, not on receiver-only launches.
     }
 
     companion object {

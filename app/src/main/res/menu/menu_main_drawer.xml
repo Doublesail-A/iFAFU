@@ -6,10 +6,6 @@
             android:icon="@drawable/ic_m3_language"
             android:title="网页模式" />
         <item
-            android:id="@+id/menu_boya"
-            android:icon="@drawable/ic_m3_smart_toy"
-            android:title="校园百事通" />
-        <item
             android:id="@+id/menu_comment"
             android:icon="@drawable/ic_m3_event_note"
             android:title="一键评教" />

@@ -88,6 +88,8 @@ object ReminderScheduler {
         val alarm = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = pending(context)
         alarm.cancel(intent)
+        // Permission denial must not consume occurrences or cause one-second retries.
+        if (!allowed(context)) return
         val now = System.currentTimeMillis()
         val next = load(context).filter { eligible(context, it, now) }.minOfOrNull { it.reminderAt } ?: return
         val trigger = maxOf(now + 1_000, next)
@@ -108,15 +110,14 @@ object ReminderScheduler {
         val due = events.filter { eligible(context, it, now) && it.reminderAt <= now + 1_000 }
         val delivered = prefs(context).getStringSet("delivered", emptySet()).orEmpty().toMutableSet()
         due.forEach { event ->
-            if (allowed(context)) notify(context, event)
-            delivered.add(event.uid)
+            if (allowed(context) && notify(context, event)) delivered.add(event.uid)
         }
         // Keep only current occurrences; prevents unbounded growth and duplicate alerts.
         prefs(context).edit().putStringSet("delivered", delivered.intersect(events.map { it.uid }.toSet())).commit()
         scheduleNext(context)
     }
 
-    private fun notify(context: Context, event: ScheduleEvent) {
+    private fun notify(context: Context, event: ScheduleEvent): Boolean {
         createChannels(context)
         val exam = event.kind == "exam"
         val destination = Intent(context, if (exam) ExamListActivity::class.java else TimetableActivity::class.java)
@@ -133,7 +134,10 @@ object ReminderScheduler {
             .setContentIntent(open).setAutoCancel(true).setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setPriority(NotificationCompat.PRIORITY_HIGH).setColor(event.color).setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .build()
-        try { NotificationManagerCompat.from(context).notify(event.uid.hashCode(), notification) } catch (_: SecurityException) { }
+        return try {
+            NotificationManagerCompat.from(context).notify(event.uid.hashCode(), notification)
+            true
+        } catch (_: SecurityException) { false }
     }
 
     fun test(context: Context) {
@@ -150,21 +154,18 @@ object ReminderScheduler {
         val count = load(context).count { eligible(context, it, now) && it.kind != "test" }
         return when {
             !allowed(context) -> "尚未允许通知，点击开启系统通知权限"
-            !exact(context) -> "已准备 " + count + " 条提醒 · 点击允许准时提醒"
-            else -> "已准备 " + count + " 条提醒 · 可准时送达"
+            !exact(context) -> "已准备 " + count + " 条提醒 · 未允许准时提醒，系统可能延迟"
+            else -> "已准备 " + count + " 条提醒 · 已登记系统闹钟，无需保持应用运行"
         }
     }
 }
 
 class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        // Disk-backed queue survives process death, reboot, app updates and clock changes.
-        val result = goAsync()
-        Thread {
-            try {
-                if (intent.action == "cn.ifafu.REMINDER") ReminderScheduler.deliverDue(context)
-                else ReminderScheduler.scheduleNext(context)
-            } finally { result.finish() }
-        }.start()
+        // Keep delivery synchronous: AlarmManager holds the wake lock for onReceive.
+        // Posting a notification and registering the next alarm only need the small
+        // disk-backed queue; no network, database refresh or long-lived service.
+        if (intent.action == "cn.ifafu.REMINDER") ReminderScheduler.deliverDue(context)
+        else ReminderScheduler.scheduleNext(context)
     }
 }

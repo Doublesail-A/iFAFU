@@ -45,6 +45,51 @@ class ScheduleIntegrationTest {
         }
     }
 
+    /** External ADB verification kills this process after instrumentation finishes.
+     * Two separate deadlines detect cold-start refresh erasing the remaining queue.
+     * Skipped in the ordinary test run; use -e coldStartDelayMs 30000 on a test device.
+     */
+    @Test fun prepareProcessDeathReminders() {
+        val delay = InstrumentationRegistry.getArguments().getString("coldStartDelayMs")?.toLong()
+        org.junit.Assume.assumeNotNull(delay)
+        Thread.sleep(1500)
+        val accountStore = SPUtils.getInstance(Constants.SP_USER_INFO)
+        check(accountStore.getString("account", "") in listOf("", "integration-cold-start")) {
+            "Cold-start fixtures require an empty isolated test device"
+        }
+        context.getSharedPreferences("schedule_reminders", android.content.Context.MODE_PRIVATE)
+            .edit().remove("delivered").commit()
+        accountStore.put("account", "integration-cold-start", true)
+        assertTrue(ReminderScheduler.allowed(context))
+        assertTrue(ReminderScheduler.exact(context))
+        val now = System.currentTimeMillis()
+        val course = ScheduleEvent("cold-start-course", "math-test", "冷启动验证 · 数学", "创104", "",
+            now + 15 * 60000 + delay!!, now + 16 * 60000 + delay, 0xff2196f3.toInt())
+        val gap = if (InstrumentationRegistry.getArguments().getString("coldStartTogether") == "true") 0L else 35000L
+        val exam = course.copy(uid = "cold-start-exam", title = "冷启动验证 · 考试", kind = "exam",
+            start = now + 30 * 60000 + delay + gap, end = now + 31 * 60000 + delay,
+            location = "考场201", description = "座位：23")
+        context.getSystemService(NotificationManager::class.java).apply {
+            cancel("cold-start-course".hashCode()); cancel("cold-start-exam".hashCode())
+        }
+        ReminderScheduler.update(context, listOf(course, exam), "integration-cold-start")
+        ReminderScheduler.setEnabled(context, "course", true)
+        ReminderScheduler.setEnabled(context, "exam", true)
+    }
+
+    @Test fun clearProcessDeathReminders() {
+        org.junit.Assume.assumeTrue(InstrumentationRegistry.getArguments().getString("coldStartCleanup") == "true")
+        val accountStore = SPUtils.getInstance(Constants.SP_USER_INFO)
+        check(accountStore.getString("account", "") == "integration-cold-start")
+        context.getSystemService(NotificationManager::class.java).apply {
+            cancel("cold-start-course".hashCode()); cancel("cold-start-exam".hashCode())
+        }
+        accountStore.remove("account")
+        ReminderScheduler.update(context, emptyList(), "")
+        ReminderScheduler.setEnabled(context, "course", false)
+        ReminderScheduler.setEnabled(context, "exam", false)
+    }
+
     @Test fun systemAlarmDeliversCourseAndExamNotificationsWithDetails() {
         val accountStore = SPUtils.getInstance(Constants.SP_USER_INFO)
         val previous = accountStore.getString("account", "")

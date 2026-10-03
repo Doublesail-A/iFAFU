@@ -31,6 +31,7 @@ abstract class BaseActivity : AppCompatActivity {
         ThemeManager.apply(this)
         appliedPaletteKey = ThemeManager.paletteKey(this)
         super.onCreate(savedInstanceState)
+        (application as cn.ifafu.ifafu.IFAFU).scheduleRepository.get().start()
         window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
         window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(
             MaterialColors.getColor(this, com.google.android.material.R.attr.colorSurface,
