@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "checkedOn": "2026-10-04",
   "calendars": [
     {
       "school": "FAFU",
@@ -457,6 +458,5 @@
         }
       ]
     }
-  ],
-  "checkedOn": "2026-10-04"
+  ]
 }
