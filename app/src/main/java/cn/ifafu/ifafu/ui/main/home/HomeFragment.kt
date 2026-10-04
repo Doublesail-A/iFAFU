@@ -63,7 +63,7 @@ class HomeFragment : Fragment(R.layout.home_fragment) {
         currentBinding.tvHomeGreeting.text = state.greeting
         state.themeSeed?.let { (activity as? MainActivity)?.updateCourseThemeSeed(it) }
 
-        currentBinding.tvCourseSummary.text = when (state.courses.size) {
+        currentBinding.tvCourseSummary.text = state.courseNotice?.takeIf { state.courses.isNotEmpty() } ?: when (state.courses.size) {
             0 -> "查看完整课程表"
             1 -> "接下来 1 门"
             else -> "接下来 2 门"
@@ -84,6 +84,7 @@ class HomeFragment : Fragment(R.layout.home_fragment) {
             currentBinding.tvCourseMeta2,
             currentBinding.tvCoursePlace2,
         )
+        currentBinding.tvCoursesEmpty.text = state.courseNotice ?: "今天接下来的时间留给自己"
         currentBinding.tvCoursesEmpty.visibility =
             if (state.courses.isEmpty() && !state.isLoading) View.VISIBLE else View.GONE
 

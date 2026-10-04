@@ -20,6 +20,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
+import java.time.LocalDate
 import timber.log.Timber
 import java.io.File
 import javax.inject.Inject
@@ -38,12 +41,10 @@ class TimetableViewModel @Inject constructor(
      * 开学日期，用于计算`当前周`和`课表的日期栏`
      * 监听[showingYearTerm]来切换开学日期
      */
-    val openingDay = showingYearTerm.switchMap { ops ->
-        liveData(Dispatchers.IO) {
-            if (ops == null) return@liveData
-            emit(repository.getOpeningDay(ops.year, ops.term))
-        }
-    }
+    val openingDay = MutableLiveData<OpeningDayVO>()
+    val calendarStatus = MutableLiveData<String?>()
+    val calendarSource = MutableLiveData<String?>()
+    private var timetableJob: Job? = null
 
     val timetablePreviews = MutableLiveData<Resource<List<TimetablePreviewSource>>>()
 
@@ -88,13 +89,7 @@ class TimetableViewModel @Inject constructor(
                 .catch { e -> Timber.e(e, "初始化课表失败") }
                 .collect { options ->
                     Timber.d("Options: $options")
-                    showingYearTerm.postValue(options.selected)
-                    updateTimetable(
-                        options.selected.year,
-                        options.selected.term,
-                        GetCourseStrategy.NETWORK_IF_LOCAL_EMPTY,
-                        showLoading = false,
-                    )
+                    showingYearTerm.value = options.selected
                     updateTimetablePreviews(options)
                 }
         }
@@ -114,16 +109,33 @@ class TimetableViewModel @Inject constructor(
         @GetCourseStrategy strategy: Int,
         showLoading: Boolean = false
     ) {
-        viewModelScope.launch {
+        timetableJob?.cancel()
+        timetableJob = viewModelScope.launch {
+            var networkFailed = false
             if (showLoading) {
                 timetableVO.postValue(Resource.Loading())
             }
             repository.getCoursesFlow(year, term, strategy)
                 .flowOn(Dispatchers.IO)
                 .map { TimetableVO.create(it) }
-                .catch { message.postValue(it.errorMessage("查询课表失败")) }
+                .catch { e ->
+                    if (e is CancellationException) throw e
+                    networkFailed = true
+                    val failure = e.errorMessage("查询课表失败")
+                    message.value = failure
+                    val local = repository.getCourses(year, term, GetCourseStrategy.LOCAL)
+                    emit(TimetableVO.create(local))
+                }
                 .collectLatest {
-                    if (showLoading) {
+                    val selected = showingYearTerm.value
+                    if (selected?.year != year || selected.term != term) return@collectLatest
+                    val opening = repository.getOpeningDay(year, term)
+                    if (openingDay.value != opening) openingDay.value = opening
+                    val calendar = repository.calendarState(year, term)
+                    val holiday = calendar.calendar?.closed?.get(LocalDate.now().toString())
+                    calendarStatus.value = holiday?.let { name -> "$name 期间停课，调课已按校历安排" } ?: calendar.notice
+                    calendarSource.value = calendar.calendar?.source
+                    if (showLoading && !networkFailed) {
                         message.postValue("课表刷新成功")
                     }
                     timetableVO.postValue(Resource.Success(it))
@@ -196,6 +208,7 @@ class TimetableViewModel @Inject constructor(
     private fun getTimePreviewSource(year: String, term: String): TimetablePreviewSource {
         return TimetablePreviewSource(year, term, viewModelScope.async(Dispatchers.IO) {
             repository.getCoursesFlow(year, term, GetCourseStrategy.NETWORK_IF_LOCAL_EMPTY)
+                .filter { it.isNotEmpty() }
                 .map { it.findFirstWeekHasCourse() }
                 .catch { }
                 .firstOrNull() ?: emptyList()

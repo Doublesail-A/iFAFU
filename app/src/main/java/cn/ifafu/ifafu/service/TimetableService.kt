@@ -94,6 +94,9 @@ class TimetableService @Inject constructor(
                         client.post(url, referer, params).body?.string()
                     } ?: return@needParams IFResponse.failure("获取课表页面失败")
                 }
+                if (org.jsoup.Jsoup.parse(html).getElementById("Table1") == null) {
+                    return@needParams IFResponse.failure("教务系统没有返回有效课表，请稍后重试")
+                }
                 val courses = parseCourseHtml(html).map {
                     NewCourse(
                         name = it.name,

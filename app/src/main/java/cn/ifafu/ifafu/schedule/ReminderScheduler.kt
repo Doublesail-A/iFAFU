@@ -26,6 +26,7 @@ import java.util.Locale
 
 /** One persisted alarm queue, with exact idle alarms when the user allows them. */
 object ReminderScheduler {
+    private const val CALENDAR_RULES_VERSION = 1
     private fun prefs(context: Context) = context.getSharedPreferences("schedule_reminders", Context.MODE_PRIVATE)
     fun enabled(context: Context, kind: String) = prefs(context).getBoolean(kind, false)
     fun setEnabled(context: Context, kind: String, value: Boolean) {
@@ -57,11 +58,16 @@ object ReminderScheduler {
                 .put("color", it.color).put("kind", it.kind).put("scope", it.scope))
         }
         prefs(context).edit().putString("events", array.toString())
-            .putString("account", ScheduleEvents.key(account)).commit()
+            .putString("account", ScheduleEvents.key(account))
+            .putInt("calendar_rules_version", CALENDAR_RULES_VERSION).commit()
         scheduleNext(context)
     }
 
     private fun load(context: Context): List<ScheduleEvent> = runCatching {
+        // Queues created before semester-aware holiday filtering are unverified.
+        // Opening the upgraded app rebuilds them; a cold receiver must not emit
+        // phantom holiday lessons from an old queue.
+        if (prefs(context).getInt("calendar_rules_version", 0) != CALENDAR_RULES_VERSION) return@runCatching emptyList()
         val array = JSONArray(prefs(context).getString("events", "[]"))
         (0 until array.length()).map {
             val obj = array.getJSONObject(it)

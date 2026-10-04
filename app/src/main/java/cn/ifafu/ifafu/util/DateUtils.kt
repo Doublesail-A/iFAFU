@@ -2,6 +2,9 @@ package cn.ifafu.ifafu.util
 
 import java.text.SimpleDateFormat
 import java.util.*
+import java.time.Instant
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 /**
  * create by woolsen on 19/7/16
@@ -11,8 +14,6 @@ object DateUtils {
     val weekdays = arrayOf("周日", "周一", "周二", "周三", "周四", "周五", "周六")
 
     private const val ONE_DAY_IN_MILL = 24 * 60 * 60 * 1000L
-    private val calendar = Calendar.getInstance()
-    private val format = SimpleDateFormat("yyyy-MM-dd", Locale.CHINA)
 
     fun getWeekdayCN(weekday: Int): String {
         return weekdays[weekday - 1]
@@ -27,6 +28,7 @@ object DateUtils {
      * @return 间隔的天数
      */
     fun calcLastDays(fromDate: Date, toDate: Date): Int {
+        val calendar = Calendar.getInstance()
         calendar.time = fromDate
         calendar[Calendar.HOUR_OF_DAY] = 0
         calendar[Calendar.MINUTE] = 0
@@ -113,19 +115,16 @@ object DateUtils {
      * @param openingDay 开学日期的时间戳，单位：毫秒
      * @param now        需要计算时间的时间戳，单位：毫秒
      *
-     * @return week > 0 and week < 24，否则返回-1
+     * @return 教学周为1..60，开学前返回-1
      */
     fun getCurrentWeek(openingDay: Long, now: Long): Int {
-        val c = Calendar.getInstance()
-        c.timeInMillis = openingDay
-        val offset = c[Calendar.DAY_OF_WEEK]
-        val t = c.time.time - (offset - 1) * ONE_DAY_IN_MILL
-        val day = (now - t) / ONE_DAY_IN_MILL
-        if (day < 0) {
-            return -1
-        }
-        val w = (day / 7 + 1).toInt()
-        return if (w in 1..24) w else -1
+        val zone = ZoneId.systemDefault()
+        val first = Instant.ofEpochMilli(openingDay).atZone(zone).toLocalDate()
+        val sunday = first.minusDays((first.dayOfWeek.value % 7).toLong())
+        val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+        val days = ChronoUnit.DAYS.between(sunday, today)
+        if (days < 0) return -1
+        return (days / 7 + 1).toInt().takeIf { it in 1..60 } ?: -1
     }
 
     /**
@@ -149,12 +148,13 @@ object DateUtils {
     }
 
     fun isToday(date: Date): Boolean {
+        val format = SimpleDateFormat("yyyy-MM-dd", Locale.CHINA)
         return format.format(date) == format.format(Date())
     }
 
     fun isYesterday(date: Date): Boolean {
-        val time = date.time - ONE_DAY_IN_MILL
-        return format.format(time) == format.format(Date())
+        val format = SimpleDateFormat("yyyy-MM-dd", Locale.CHINA)
+        return format.format(date) == format.format(Date(System.currentTimeMillis() - ONE_DAY_IN_MILL))
     }
 
     fun isSameDay(time1: Long, time2: Long): Boolean {

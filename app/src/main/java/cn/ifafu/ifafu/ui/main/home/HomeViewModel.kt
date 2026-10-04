@@ -19,6 +19,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.time.LocalDate
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
@@ -45,11 +48,13 @@ data class HomeUiState(
     val exam: HomeExamUi? = null,
     val themeSeed: Int? = null,
     val isLoading: Boolean = true,
+    val courseNotice: String? = null,
 )
 
 private data class CourseSnapshot(
     val today: List<HomeCourseUi>,
     val nextCourseSeed: Int?,
+    val notice: String? = null,
 )
 
 @HiltViewModel
@@ -76,8 +81,11 @@ class HomeViewModel @Inject constructor(
             }
     }
 
+    private var refreshJob: Job? = null
+
     fun refresh() {
-        viewModelScope.launch {
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
             val base = createBaseState()
             _state.value = (_state.value ?: base).copy(
                 date = base.date,
@@ -86,13 +94,15 @@ class HomeViewModel @Inject constructor(
             )
             val localExam = runCatching { examRepository.getNowExamsFromLocal() }
                 .getOrDefault(emptyList())
-            val courseSnapshot = runCatching { loadCourses() }
-                .getOrDefault(CourseSnapshot(emptyList(), null))
+            val courseSnapshot = try { loadCourses() }
+                catch (e: CancellationException) { throw e }
+                catch (_: Exception) { CourseSnapshot(emptyList(), null, "课程暂未获取，请联网刷新") }
             _state.value = base.copy(
                 courses = courseSnapshot.today,
                 exam = selectNextExam(localExam)?.toUi(),
                 themeSeed = courseSnapshot.nextCourseSeed,
                 isLoading = false,
+                courseNotice = courseSnapshot.notice,
             )
         }
     }
@@ -123,8 +133,11 @@ class HomeViewModel @Inject constructor(
             .map { it.toUi(setting, nowInMinutes) }
             .toList()
         val next = CourseSchedule.nextCourse(courses, openingDay.getOpeningDay(), setting)
+        val calendarState = timetableRepository.calendarState(options.selected.year, options.selected.term)
+        val holiday = calendarState.calendar?.closed?.get(LocalDate.now().toString())
         return CourseSnapshot(
             today = today,
+            notice = holiday?.let { "$it 期间停课，安心享受假期" } ?: calendarState.notice,
             nextCourseSeed = next?.let {
                 CourseColorPalette.forCourses(Utils.getApp(), courses.map { course -> course.name })
                     .seedFor(it.name)
