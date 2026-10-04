@@ -33,6 +33,7 @@ class TimetableParser : BaseOptionParser() {
     )
 
     fun parse(html: String): List<CourseBO> {
+        locationFlag.forEach { it.fill(false) }
         val courses = ArrayList<CourseBO>()
         val document = Jsoup.parse(html)
 
@@ -127,7 +128,7 @@ class TimetableParser : BaseOptionParser() {
                             /**
                              * 获取停、调、换课情况，并修改课程
                              */
-                            text.findByRegex("[补停换调][0-9]{3,4}").forEach { changeId ->
+                            text.findByRegex("[补停换调][0-9]+").forEach { changeId ->
 //                                println("调课情况：${changeId}")
                                 when (val change = changesMap[changeId]) {
                                     is Change.Ting -> {
@@ -210,7 +211,7 @@ class TimetableParser : BaseOptionParser() {
                     cmax = courses[j]
                 }
                 if (cmin.weeks.isSame(cmax.weeks)) {
-                    if (cmin.beginNode + cmin.nodeLength == cmax.nodeLength) {
+                    if (cmin.beginNode + cmin.nodeLength == cmax.beginNode) {
                         cmin.nodeLength += cmax.nodeLength
                         courses.remove(cmax)
                     }
@@ -224,12 +225,7 @@ class TimetableParser : BaseOptionParser() {
     }
 
     private fun Set<Int>.isSame(other: Set<Int>): Boolean {
-        other.forEach {
-            if (!this.contains(it)) {
-                return false
-            }
-        }
-        return true
+        return this == other
     }
 
     /**
@@ -239,7 +235,9 @@ class TimetableParser : BaseOptionParser() {
      *
      */
     private fun textToCourse(text: String): CourseBO {
-        val info = text.split("<br>".toRegex()).dropLastWhile { it.isEmpty() }
+        val info = text.split("<br>".toRegex()).dropLastWhile { it.isEmpty() }.map { part ->
+            Jsoup.parseBodyFragment(part).apply { select("font").remove() }.text().trim()
+        }
         val name = info[0].trim()
         val teacher = info[2].trim()
 
@@ -285,9 +283,9 @@ class TimetableParser : BaseOptionParser() {
             }
         }
         //解析周次
-        val weekText = timeText.findFirstByRegex("第[0-9]+-[0-9]+周")
+        val weekText = timeText.findFirstByRegex("第[0-9]+(-[0-9]+)?周")
         val intList = weekText.getInts()
-        var weeks = (intList[0]..intList[1]).toList()
+        var weeks = (intList[0]..intList.getOrElse(1) { intList[0] }).toList()
         if (text.contains("单周")) {
             weeks = weeks.filter { it % 2 != 0 }
         } else if (text.contains("双周")) {
@@ -325,10 +323,7 @@ class TimetableParser : BaseOptionParser() {
      * 解析调课信息
      */
     private fun getChangeInfo(document: Document): List<Change> {
-        val table = document.getElementById("DBGrid")
-            ?.children()
-            ?.get(0)
-            ?.children() ?: return emptyList()
+        val table = document.getElementById("DBGrid")?.select("tr") ?: return emptyList()
         return table.drop(1) //去除标题
             .map { ele -> ele.children().map { it.text() } }
             .mapNotNull { info ->
@@ -404,13 +399,13 @@ class TimetableParser : BaseOptionParser() {
                 if (this.size == 1) {
                     listOf(this[0])
                 } else {
-                    (this[0] until this[1]).toList()
+                    (this[0]..this[1]).toList()
                 }
             }
             if (ts[0].contains("单周")) {
-                weeks = weeks.dropLastWhile { it % 2 == 0 }
+                weeks = weeks.filter { it % 2 != 0 }
             } else if (ts[0].contains("双周")) {
-                weeks = weeks.dropLastWhile { it % 2 != 0 }
+                weeks = weeks.filter { it % 2 == 0 }
             }
             val classroom = ts.getOrElse(1) { "" }
             val teacher = ts.getOrElse(2) { "" }

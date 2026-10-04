@@ -27,17 +27,15 @@
 
 “关于 iFAFU”使用 Material 3 排版与组件，显示独立版本号、当前项目 GitHub、Release、隐私政策与开源致谢。侧边栏和关于页共用 GitHub Releases 更新检查，只从本项目最新正式 Release 获取更新；按当前安装渠道选择匹配 APK，缺少匹配包时打开发布页。旧预览版本标签不会被当作独立版本更新。移除旧官网更新接口和 Bugly 更新 SDK。
 
-## 校历与调课
+## 课表日期与调停课
 
-按所选学年、学期从[学校官方校历目录](https://jwc.fafu.edu.cn/2011/list.htm)自动发现文档，支持 PDF、DOCX、XLSX 和 XLS；使用 PDFBox Android、标准 Office XML 和 JExcelAPI 读取。第一周、假期、校运会和全校调课由校历确定，不在运行时代码中写入某一年的国庆安排。新生军训等特定年级事项不会当作全校停课。
+保留教务系统课表及 DBGrid 调停课解析流程，统一假期仍使用原版的 Holiday 数据格式（from / days / changes）。原版公共假期接口返回空数据时，使用本项目按学期提供的日期数据；没有本校记录时保留原版接口与本地数据回退，不把福建农林大学校历套用到金山学院。
 
-校历明确沿用国务院安排的节日，通过 [holiday-cn](https://github.com/NateScarlet/holiday-cn) 自动维护的公告数据补充停课日期；补课必须有学校明确的课程日期对应关系，不能把“上班日”直接猜成某个星期的课程。尚未公布或尚未确认的安排会提示，不会生成未经确认日期的提醒或日历事件。学校文档无法识别或首次同步失败时，显示“尚未核对假期”，并暂停课程提醒和导出；已有校历缓存可继续离线使用。
+GitHub Actions 每天读取学校公开校历目录，自动发现学期和文档，生成 data/school-calendars.json。解析器支持学校已发布的 PDF、DOCX、XLSX、XLS；文档读取只在项目端执行，不在手机中打包解析库。学校明确沿用国务院安排的节日由 holiday-cn 补充已发布的停课日期；工作日不会被猜测为某个星期的课程。未来公告尚未发布时，沿用已有教务安排，发布后更新数据。未知的当前或未来学期文档会让同步任务报告失败，保留此前有效记录。
 
-当前官方校历同步面向福建农林大学本校；不会将本校安排套用到金山学院。其他学校暂未核对时明确提示。
+应用内置小份日期数据，首次安装离线也可读取；联网按 24 小时缓存更新，手动刷新强制获取。使用原有课程信息完成停课与补课转换，不修改数据库中的原始周次。主页、课表、主题、提醒、日历导出共用转换结果。支持一门课多次调课，保留学期、账号、教师和教室；教务系统已经调到补课日的课程不会被删除。手动添加的课程保留为明确安排。
 
-缓存以学校、学年和学期分开保存，有效期 24 小时。打开页面读取时检查更新，手动刷新课表强制同步。课表、主页、下一节课主题、提醒和日历导出共用同一调课结果。转换保留名称、地点、教师、学期和账号信息，支持一门课多次调课，不修改教务原始周次；手动添加的课程作为用户明确安排保留。切换学期取消旧请求，避免旧课表覆盖新学期。
-
-升级后重新打开应用，课程提醒会重排；之前已导入其他日历的课表，需要从“提醒与日历导入”重新导入以更新旧事件。后台闹钟使用已经核对、保存的本地安排，后台接收器不执行网络同步。
+没有新增假期说明横幅、修复说明或校历状态页，也不额外限制提醒与导出。切换学期取消旧请求，空课表正确替换旧数据；本地解析器正确处理停课范围的最后一周、单双周和相邻课程合并。
 
 ## 本地提醒
 
@@ -68,7 +66,7 @@ JDK 17、Android SDK 34、Build Tools 34.0.0、Gradle 8.2；AGP 8.2.2、Kotlin 1
 
 ```sh
 ./gradlew :app:assembleDebug
-./gradlew :app:testDebugUnitTest --tests 'cn.ifafu.ifafu.ui.timetable.CourseColorPaletteTest' --tests 'cn.ifafu.ifafu.schedule.ScheduleEventsTest' --tests 'cn.ifafu.ifafu.update.GitHubReleasesTest' --tests 'cn.ifafu.ifafu.calendar.*'
+./gradlew :app:testDebugUnitTest --tests 'cn.ifafu.ifafu.ui.timetable.CourseColorPaletteTest' --tests 'cn.ifafu.ifafu.schedule.ScheduleEventsTest' --tests 'cn.ifafu.ifafu.update.GitHubReleasesTest' --tests 'cn.ifafu.ifafu.calendar.*' --tests 'cn.ifafu.ifafu.service.TimetableParserRegressionTest'
 ./gradlew :app:assembleDebugAndroidTest
 ./gradlew :app:assembleRelease
 # Optional: integration tests against the minified release
@@ -82,7 +80,3 @@ Windows 使用 gradlew.bat，SDK 路径放在 local.properties 或 ANDROID_SDK_R
 测试版包名为 cn.ifafu.ifafu.debug，可与原版共存。缺少 key-release.properties 时，Release 使用开发签名，不能覆盖官方不同签名的安装包。正式发布应配置自己的签名。
 
 感谢 [woolsen/iFAFU](https://github.com/woolsen/iFAFU) 原作者及贡献者，保留原作者署名与各组件的开源许可。旧工程中的部分测试依赖原作者本机文件，CI 仅运行新增的独立回归测试。
-
-## 1.0.1 课表修复验证
-
-32 项 JVM 回归测试通过；Android 正式精简包通过七份真实学期 PDF/DOCX/XLSX/XLS 文档读取、官方目录实时发现和离线缓存、隔离内存数据库到课表及日历事件的 3 项集成测试。通知回归测试通过，课程与考试都包含地点信息。已在保留原有课程数据的正式应用中核对国庆当周：10 月 1–7 日停课，10 月 10 日按校历补上 10 月 7 日的课程。公开源码和测试数据不包含个人课表、账号或截图。

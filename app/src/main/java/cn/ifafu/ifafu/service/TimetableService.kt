@@ -97,7 +97,7 @@ class TimetableService @Inject constructor(
                 if (org.jsoup.Jsoup.parse(html).getElementById("Table1") == null) {
                     return@needParams IFResponse.failure("教务系统没有返回有效课表，请稍后重试")
                 }
-                val courses = parseCourseHtml(html).map {
+                val courses = parseCourseHtml(html, year, term).map {
                     NewCourse(
                         name = it.name,
                         teacher = it.teacher,
@@ -116,9 +116,9 @@ class TimetableService @Inject constructor(
         }
     }
 
-    private suspend fun parseCourseHtml(html: String): List<CourseBO> {
+    private suspend fun parseCourseHtml(html: String, year: String, term: String): List<CourseBO> {
         val courses = try {
-            service.parseCourseHtml(html).data
+            service.parseCourseHtml(html).data?.takeIf { it.term.year == year && it.term.term == term }
         } catch (e: Exception) {
             Timber.e(e, "通过网络解析课表失败")
             null

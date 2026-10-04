@@ -162,9 +162,6 @@
 -keep class cn.ifafu.ifafu.schedule.** { public *; }
 -keep class com.blankj.utilcode.util.SPUtils { public *; }
 
-# PDFBox optional JPEG2000 image codec is not required for calendar text.
--dontwarn com.gemalto.jp2.JP2Decoder
-
 # Public interfaces invoked by the separate release verification APK.
 -keep class kotlinx.coroutines.Dispatchers { public *; }
 -keep class kotlinx.coroutines.BuildersKt { public *; }

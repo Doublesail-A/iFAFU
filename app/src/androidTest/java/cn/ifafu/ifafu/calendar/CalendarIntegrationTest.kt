@@ -15,7 +15,7 @@ import java.time.LocalDate
 @RunWith(AndroidJUnit4::class)
 class CalendarIntegrationTest {
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
-    @Test fun actualPublishedPdfWordAndExcelCalendarsWorkOnAndroid() {
+    @Test fun bundledAndDiskDateDataWorkWithoutDocumentReaders() = runBlocking {
         // Keep the shared desugared TimeZone bridge in the separate test APK.
         assertEquals("UTC", java.util.TimeZone.getTimeZone("UTC").id)
         val synchronized = java.util.Collections.synchronizedMap(mutableMapOf<String, Int>())
@@ -32,53 +32,24 @@ class CalendarIntegrationTest {
         assertEquals(1L, java.time.temporal.ChronoUnit.DAYS.between(date, date.plusDays(1)))
         assertEquals(date, LocalDate.of(2026, 8, 30))
 
-        val cases = listOf(
-            Triple("c2011a432573.pdf", "2026-2027", "1"),
-            Triple("c2011a432574.pdf", "2026-2027", "2"),
-            Triple("c2011a412601.pdf", "2025-2026", "1"),
-            Triple("c2011a389470.pdf", "2024-2025", "1"),
-            Triple("c2011a397398.docx", "2024-2025", "2"),
-            Triple("c2011a364983.xlsx", "2023-2024", "2"),
-            Triple("2021-2022-1.xls", "2021-2022", "1"))
-        val parsed = cases.map { (name, year, term) ->
-            val bytes = instrumentation.context.assets.open("calendars/$name").use { it.readBytes() }
-            val remarks = CalendarDocuments.text(instrumentation.targetContext, bytes, name)
-            android.util.Log.i("CalendarFixture", name + "\n" + remarks)
-            SchoolCalendarParser.parse(remarks, year, term)
-        }
-        assertEquals("2026-08-30", parsed[0].firstWeek)
-        assertEquals("2026-09-20", parsed[0].moves["2026-10-06"])
-        assertEquals("2027-02-21", parsed[1].firstWeek)
-        assertEquals("2025-09-28", parsed[2].moves["2025-10-07"])
-        assertEquals(3, parsed[3].moves.size)
-        assertEquals("2025-02-16", parsed[4].firstWeek)
-        assertEquals("2025-04-27", parsed[4].moves["2025-05-05"])
-        assertEquals("清明节", parsed[4].closed["2025-04-05"])
-        assertEquals("2024-02-25", parsed[5].firstWeek)
-        assertEquals(3, parsed[5].moves.size)
-        assertEquals("端午节", parsed[5].closed["2024-06-08"])
-        assertTrue(parsed[6].closed.containsKey("2021-10-01"))
-    }
-
-    @Test fun liveSchoolDiscoveryAndDiskCachePreventNationalDayPhantomLessons() = runBlocking {
-        // Isolated cache: never accesses or modifies the user's account/database.
-        val dir = File(instrumentation.targetContext.cacheDir, "calendar-integration").apply { mkdirs() }
+        val dir = File(instrumentation.targetContext.cacheDir, "calendar-data-integration").apply { mkdirs() }
         val context = object : ContextWrapper(instrumentation.targetContext) {
             override fun getFilesDir(): File = dir
         }
-        val state = SchoolCalendarStore(context).resolve("FAFU", "2026-2027", "1", true)
-        assertTrue(state.notice.orEmpty(), state.verified)
-        val calendar = state.calendar!!
+        val file = File(dir, "school-calendar-data.json")
+        val bundled = context.assets.open("school-calendars.json").bufferedReader().use { it.readText() }
+        file.writeText(bundled)
+        val calendar = SchoolCalendarStore(context).resolve("FAFU", "2026-2027", "1")!!
+        assertEquals("2026-08-30", calendar.firstWeek)
         assertTrue(calendar.source.startsWith("https://jwc.fafu.edu.cn/"))
-        val reloaded = SchoolCalendarStore(context).resolve("FAFU", "2026-2027", "1")
-        assertEquals(calendar, reloaded.calendar)
-        val courses = (1..7).map { day -> NewCourse(name = "验证课程", weeks = (1..20).toSortedSet(), weekday = day) }
+        assertEquals(calendar, SchoolCalendarStore(context).resolve("FAFU", "2026-2027", "1"))
+        val courses = (2..6).map { day -> NewCourse(name = "验证课程", weeks = (1..20).toSortedSet(), weekday = day) }
         val dates = CalendarCourses.apply(courses, calendar).flatMap { course ->
             course.weeks.map { LocalDate.parse(calendar.firstWeek).plusDays((it - 1) * 7L + course.weekday - 1).toString() }
         }
-        assertFalse(dates.contains("2026-10-05"))
-        assertFalse(dates.contains("2026-10-01"))
+        for (day in 1..7) assertFalse(dates.contains("2026-10-0" + day))
         assertTrue(dates.contains("2026-10-10"))
+        assertEquals("2027-02-21", SchoolCalendarStore(context).resolve("FAFU", "2026-2027", "2")!!.firstWeek)
     }
 
     @Test fun repositoryAndCalendarExportUseIdenticalAdjustedOccurrences() = runBlocking(kotlinx.coroutines.Dispatchers.IO) {

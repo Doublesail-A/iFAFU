@@ -22,7 +22,6 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
-import java.time.LocalDate
 import timber.log.Timber
 import java.io.File
 import javax.inject.Inject
@@ -42,8 +41,6 @@ class TimetableViewModel @Inject constructor(
      * 监听[showingYearTerm]来切换开学日期
      */
     val openingDay = MutableLiveData<OpeningDayVO>()
-    val calendarStatus = MutableLiveData<String?>()
-    val calendarSource = MutableLiveData<String?>()
     private var timetableJob: Job? = null
 
     val timetablePreviews = MutableLiveData<Resource<List<TimetablePreviewSource>>>()
@@ -131,10 +128,6 @@ class TimetableViewModel @Inject constructor(
                     if (selected?.year != year || selected.term != term) return@collectLatest
                     val opening = repository.getOpeningDay(year, term)
                     if (openingDay.value != opening) openingDay.value = opening
-                    val calendar = repository.calendarState(year, term)
-                    val holiday = calendar.calendar?.closed?.get(LocalDate.now().toString())
-                    calendarStatus.value = holiday?.let { name -> "$name 期间停课，调课已按校历安排" } ?: calendar.notice
-                    calendarSource.value = calendar.calendar?.source
                     if (showLoading && !networkFailed) {
                         message.postValue("课表刷新成功")
                     }

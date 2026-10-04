@@ -26,7 +26,7 @@ import java.util.Locale
 
 /** One persisted alarm queue, with exact idle alarms when the user allows them. */
 object ReminderScheduler {
-    private const val CALENDAR_RULES_VERSION = 1
+    private const val CALENDAR_RULES_VERSION = 2
     private fun prefs(context: Context) = context.getSharedPreferences("schedule_reminders", Context.MODE_PRIVATE)
     fun enabled(context: Context, kind: String) = prefs(context).getBoolean(kind, false)
     fun setEnabled(context: Context, kind: String, value: Boolean) {

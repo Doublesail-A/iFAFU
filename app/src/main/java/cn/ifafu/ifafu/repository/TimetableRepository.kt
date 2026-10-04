@@ -14,8 +14,6 @@ import cn.ifafu.ifafu.exception.Failure
 import cn.ifafu.ifafu.service.IFAFUService
 import cn.ifafu.ifafu.service.TimetableService
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.CancellationException
 import androidx.room.withTransaction
 import cn.ifafu.ifafu.calendar.*
@@ -23,7 +21,8 @@ import cn.ifafu.ifafu.entity.User
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.last
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import retrofit2.Retrofit
 import timber.log.Timber
@@ -48,19 +47,19 @@ class TimetableRepository @Inject constructor(
 
     val calendarChanges get() = calendars.changes
 
-    // Calendar resolution is awaited by consumers. The original detached
-    // holiday request could finish after an unadjusted timetable was rendered.
-    init {
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-            try { openingDayDao.save(ifafuService.firstWeeks()) }
-            catch (e: CancellationException) { throw e }
-            catch (e: Exception) { Timber.w(e, "第一周备用数据暂不可用") }
-        }
-    }
+    private val metadataMutex = Mutex()
+    private var metadataAttempt = 0L
 
-    suspend fun calendarState(year: String, term: String, force: Boolean = false): CalendarState {
-        val user = getUsingUser() ?: return CalendarState(null, "请先登录")
-        return calendars.resolve(user.school, year, term, force)
+    private suspend fun originalMetadata(force: Boolean = false) = metadataMutex.withLock {
+        val now = System.currentTimeMillis()
+        if (!force && now - metadataAttempt in 0 until 86_400_000L) return@withLock
+        metadataAttempt = now
+        try {
+            openingDayDao.save(ifafuService.firstWeeks())
+            val holidays = ifafuService.holiday()
+            if (holidays.isNotEmpty()) holidayDao.save(holidays)
+        } catch (e: CancellationException) { throw e }
+        catch (e: Exception) { Timber.w(e, "课表日期数据暂不可用，继续使用本地数据") }
     }
 
     fun getTermOptionsResource(): Flow<TermOptions> = flow {
@@ -99,6 +98,7 @@ class TimetableRepository @Inject constructor(
         val resp = service.getTimetable(user, year, term)
         if (resp.code != IFResponse.SUCCESS) throw Failure(resp.message)
         val remote = resp.data ?: throw Failure("教务系统没有返回有效课表")
+        if (getUsingUser()?.account != user.account) throw CancellationException("Account changed")
         val manual = courseDao.getAllCourses(user.account, year, term).filter { it.local }
         database.withTransaction {
             courseDao.delete(user.account, year, term)
@@ -114,8 +114,12 @@ class TimetableRepository @Inject constructor(
     ): Flow<List<NewCourse>> = flow {
         if (year.isBlank() || term.isBlank()) { emit(emptyList()); return@flow }
         val user = getUsingUser() ?: run { emit(emptyList()); return@flow }
-        val calendar = calendars.resolve(user.school, year, term,
-            force = strategy == GetCourseStrategy.NETWORK).calendar
+        val force = strategy == GetCourseStrategy.NETWORK
+        var calendar = calendars.resolve(user.school, year, term, force)
+        if (calendar == null) {
+            originalMetadata(force)
+            calendar = AcademicCalendar(user.school, year, term, openingDayDao.find(year, term), holidayDao.findAll())
+        }
         fun adjusted(courses: List<NewCourse>) = calendar?.let { CalendarCourses.apply(courses, it) }
             ?: courses.map { it.copy(weeks = TreeSet(it.weeks)) }
         val local = courseDao.getAllCourses(user.account, year, term)
@@ -176,7 +180,10 @@ class TimetableRepository @Inject constructor(
 
     suspend fun getOpeningDay(year: String, term: String): OpeningDayVO =
         withContext(Dispatchers.IO) {
-            val official = if (year.isNotBlank() && term.isNotBlank()) calendarState(year, term).calendar else null
+            val user = getUsingUser()
+            val official = if (user != null && year.isNotBlank() && term.isNotBlank())
+                calendars.resolve(user.school, year, term) else null
+            if (official == null) originalMetadata()
             val openingDay = official?.firstWeek ?: openingDayDao.find(year, term)
             val currentTerm = courseDao.getOptions()
             val isC = currentTerm == null ||

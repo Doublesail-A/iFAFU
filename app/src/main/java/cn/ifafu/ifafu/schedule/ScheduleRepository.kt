@@ -51,8 +51,6 @@ class ScheduleRepository @Inject constructor(
 
     private suspend fun termEvents(year: String, term: String): List<ScheduleEvent> {
         if (year.isBlank() || term.isBlank()) return emptyList()
-        // Never schedule or export unverified holiday occurrences.
-        if (!timetable.calendarState(year, term).verified) return emptyList()
         val courses = timetable.getCourses(year, term, GetCourseStrategy.LOCAL)
         val setting = timetable.getTimetableSetting()
         val opening = timetable.getOpeningDay(year, term).getOpeningDay()
@@ -65,10 +63,6 @@ class ScheduleRepository @Inject constructor(
         val selected = db.newCourseDao.getOptions()?.selected
         val y = year?.takeIf { it.isNotBlank() } ?: selected?.year.orEmpty()
         val t = term?.takeIf { it.isNotBlank() } ?: selected?.term.orEmpty()
-        if (y.isNotBlank() && t.isNotBlank()) {
-            val calendar = timetable.calendarState(y, t)
-            check(calendar.verified) { calendar.notice ?: "校历暂未同步，请联网刷新" }
-        }
         ScheduleSnapshot(account, y + " 学年 · 第 " + t + " 学期", termEvents(y, t))
     }
 

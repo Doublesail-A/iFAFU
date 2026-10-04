@@ -112,15 +112,6 @@ class TimetableActivity : BaseActivity(), View.OnClickListener {
 
     private fun initViewModel() {
         mViewModel.message.observe(this, { snackbar(it) })
-        mViewModel.calendarStatus.observe(this) { status ->
-            contentBinding.calendarStatus.text = status
-            contentBinding.calendarStatus.visibility = if (status.isNullOrBlank()) View.GONE else View.VISIBLE
-        }
-        contentBinding.calendarStatus.setOnClickListener {
-            mViewModel.calendarSource.value?.let { url ->
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-            }
-        }
         mViewModel.timetableSetting.observe(this, { setSyllabusSetting(it) })
         mViewModel.nextCourseSeed.observe(this) { seed ->
             if (!themeRefreshPending && ThemePreferences.getTheme(this) == GlobalSetting.THEME_COURSE &&
