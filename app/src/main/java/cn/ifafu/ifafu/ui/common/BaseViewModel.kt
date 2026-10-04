@@ -6,7 +6,7 @@ import androidx.lifecycle.ViewModel
 import cn.ifafu.ifafu.exception.IFResponseFailureException
 import cn.ifafu.ifafu.exception.JiaowuPasswordErrorException
 import cn.ifafu.ifafu.ui.login.LoginActivity
-import com.blankj.utilcode.util.ToastUtils
+import cn.ifafu.ifafu.util.SystemToast
 import com.blankj.utilcode.util.Utils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -43,11 +43,11 @@ abstract class BaseViewModel : ViewModel() {
     }
 
     protected suspend fun toastInMain(message: String) = withContext(Dispatchers.Main) {
-        ToastUtils.showShort(message)
+        SystemToast.show(message)
     }
 
     protected fun toast(message: String) {
-        ToastUtils.showShort(message)
+        SystemToast.show(message)
     }
 
 }

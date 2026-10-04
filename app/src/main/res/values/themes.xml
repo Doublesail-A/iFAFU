@@ -23,10 +23,12 @@
         <item name="wToolbarStyle">@style/woToolbarStyle</item>
     </style>
 
-    <style name="AppTheme.Splash" parent="AppTheme">
-        <item name="android:windowBackground">?attr/colorSurface</item>
-        <item name="android:statusBarColor">?attr/colorSurface</item>
-        <item name="android:navigationBarColor">?attr/colorSurface</item>
+    <style name="AppTheme.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_fafu</item>
+        <item name="postSplashScreenTheme">@style/AppTheme</item>
+        <item name="android:statusBarColor">@color/splash_background</item>
+        <item name="android:navigationBarColor">@color/splash_background</item>
     </style>
 
 

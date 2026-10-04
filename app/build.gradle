@@ -32,8 +32,8 @@ android {
         minSdk 21
         targetSdk 33
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        versionCode 308
-        versionName "1.4.10-md3.4"
+        versionCode 309
+        versionName "1.0.0"
         resConfigs "zh"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -78,7 +78,7 @@ android {
             applicationIdSuffix ".debug"
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             manifestPlaceholders = [
-                    app_name      : "iFAFU测试版",
+                    app_name      : "@string/app_name",
                     app_icon      : "@mipmap/ic_fafu",
                     app_icon_round: "@mipmap/ic_fafu",
             ]
@@ -103,7 +103,7 @@ android {
 
     applicationVariants.all { variant ->
         variant.outputs.all {
-            outputFileName = "iFAFU_v${defaultConfig.versionName}(build_${defaultConfig.versionCode}_${variant.buildType.name}).apk"
+            outputFileName = "iFAFU-${defaultConfig.versionName}-${variant.buildType.name}.apk"
         }
     }
 
@@ -132,6 +132,7 @@ android {
 dependencies {
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.0"
     implementation "androidx.core:core-ktx:1.12.0"
+    implementation "androidx.core:core-splashscreen:1.0.1"
     implementation "androidx.activity:activity-ktx:1.8.0"
     implementation "androidx.fragment:fragment-ktx:1.6.2"
     implementation "androidx.appcompat:appcompat:1.6.1"
@@ -184,7 +185,7 @@ dependencies {
     implementation "me.drakeet.multitype:multitype:4.0.0-alpha3"
     implementation "com.jakewharton.timber:timber:4.7.1"
     implementation "com.blankj:utilcodex:1.31.0"
-    implementation "com.tencent.bugly:crashreport_upgrade:1.5.23"
+
 
     androidTestImplementation "androidx.test:runner:1.5.2"
     androidTestImplementation "androidx.test.ext:junit:1.1.5"

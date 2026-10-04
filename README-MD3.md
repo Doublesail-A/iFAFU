@@ -1,8 +1,8 @@
-# iFAFU · Material You
+# iFAFU
 
-基于 [woolsen/iFAFU](https://github.com/woolsen/iFAFU) 公开的 1.4.10 源码重构。内部 1.5.7 只有 APK，未用于编译，不声称包含该版本的全部新增功能。
+使用 Material 3 重构的校园课表应用。独立维护版本号，当前版本 **1.0.0**。
 
-安装包见 [GitHub Release](https://github.com/Doublesail-A/iFAFU/releases/latest)。推荐安装带 _debug 后缀的 APK，可与原版共存。
+安装包见 [GitHub Release](https://github.com/Doublesail-A/iFAFU/releases/latest)。推荐安装带 -debug 后缀的 APK，可与原版共存。
 
 ## 界面和官方动态配色
 
@@ -11,19 +11,25 @@
 - 独立周课表、课程详情完整周次、成绩和选修查询。
 - 移除旧版样式切换、反馈问题、信息平台和校园百事通入口。
 - FAFU 应用图标保留白底，缩薄外围留边：自适应图标 inset 从 22dp 改为 14dp，旧系统外部留边从 8dp 改为 3dp。
-- 官方 CircularProgressIndicator、Material 对话框和 Snackbar 提示。
+- 官方 CircularProgressIndicator、Material 对话框和系统 Toast 提示。
 
 默认使用下一节尚未开始的课的主色，跨日、跨周寻找实际有课的日期。主题只保留“下一节课”“所选背景”“系统壁纸”三个来源，删除竹青、晴空、樱粉和对应的固定颜色资源。
 
 系统壁纸主题直接采用 Android DynamicColors。手动背景使用 Material Components 内置的 **Celebi 量化 + Score 评分**；自定义主题使用官方 **SchemeTonalSpot** 和颜色资源覆盖管线。Android 12 以下回退到 Material 标准主题。
 
-课程去除调课、补课等标记后使用持久的课程身份。课表取自 [传统 Material 色表](https://m1.material.io/style/color.html) 的 300 色阶参考色，并由 Google 官方 SchemeTonalSpot 生成较克制的色彩。主要课程浅色采用 tone 70，深色采用 tone 40，比泛白的 tone 90 container 清晰，同时降低强烈实色的饱和度。历史课程使用官方 tonal palette 的相邻色阶扩展，前 95 个持久槽位分别拥有不同颜色；文字由 Google MCU 的 WCAG 对比度算法选择黑白，测试确保至少 4.5:1。调课和原课共用颜色，主题和日历使用对应的课程色。全局主题继续使用官方动态配色；15 分钟内上课的课程仍使用 MD3 errorContainer 提示。
+课程去除调课、补课等标记后使用持久的课程身份。浅色课表恢复指定预览图的蓝色、薄荷绿、浅紫、蜜桃、粉色、橙色和珊瑚色色值；同一课程及调课保持同色。深色与扩展色阶仍由 Google Material Color Utilities 的 TonalPalette 生成，前 95 个持久槽位分别拥有不同颜色，文字对比度至少 4.5:1。全局主题继续使用官方 SchemeTonalSpot 动态配色，上课前 15 分钟仍使用 MD3 errorContainer 提示。
 
 课表始终有不透明的 colorSurface 底层，手选图片叠在底层上，再绘制网格和课程；不会显示手机桌面壁纸。
 
+## 启动、提示与更新
+
+使用 AndroidX SplashScreen 的标准启动屏，不再叠加旧闪屏布局和侧滑切换。登录复选框使用 MaterialCheckBox 的主题状态色与完整点击区域，登录按钮与键盘提交均检查用户明确勾选的隐私同意状态。普通信息提示使用系统文本 Toast。
+
+“关于 iFAFU”使用 Material 3 排版与组件，显示独立版本号、当前项目 GitHub、Release、隐私政策与开源致谢。侧边栏和关于页共用 GitHub Releases 更新检查，只从本项目最新正式 Release 获取更新；按当前安装渠道选择匹配 APK，缺少匹配包时打开发布页。旧预览版本标签不会被当作独立版本更新。移除旧官网更新接口和 Bugly 更新 SDK。
+
 ## 本地提醒
 
-在“课表选项 → 日历导入与提醒”或“设置 → 日历导入与上课提醒”启用：
+在侧边栏 **“提醒与日历导入”** 或课表选项中启用：
 
 - 课程开始前 15 分钟，包含名称、时间和教室。
 - 考试开始前 30 分钟，包含科目、时间、考场和座位。
@@ -50,7 +56,7 @@ JDK 17、Android SDK 34、Build Tools 34.0.0、Gradle 8.2；AGP 8.2.2、Kotlin 1
 
 ```sh
 ./gradlew :app:assembleDebug
-./gradlew :app:testDebugUnitTest --tests 'cn.ifafu.ifafu.ui.timetable.CourseColorPaletteTest' --tests 'cn.ifafu.ifafu.schedule.ScheduleEventsTest'
+./gradlew :app:testDebugUnitTest --tests 'cn.ifafu.ifafu.ui.timetable.CourseColorPaletteTest' --tests 'cn.ifafu.ifafu.schedule.ScheduleEventsTest' --tests 'cn.ifafu.ifafu.update.GitHubReleasesTest'
 ./gradlew :app:assembleDebugAndroidTest
 ./gradlew :app:assembleRelease
 # Optional: integration tests against the minified release
@@ -59,8 +65,8 @@ JDK 17、Android SDK 34、Build Tools 34.0.0、Gradle 8.2；AGP 8.2.2、Kotlin 1
 
 Windows 使用 gradlew.bat，SDK 路径放在 local.properties 或 ANDROID_SDK_ROOT，不提交本机路径。设备集成测试验证实际 CalendarProvider 彩色导入与重复导入，以及系统闹钟的课程、考试通知。`prepareProcessDeathReminders` 接受 `coldStartDelayMs` 参数，在独立空白测试设备安排两次提醒；结束 instrumentation 并使用 `am kill` 确认进程不存在后，检查两条系统通知的名称、教室、考场和座位。普通测试运行会跳过此准备方法。参数 `coldStartTogether=true` 将两条提醒安排在同一闹钟批次，供深度休眠验证，避免连续短间隔闹钟受 Android 的休眠配额延迟；普通用户的提醒仍按各自时间安排。使用 `clearProcessDeathReminders` 和 `coldStartCleanup=true` 清理测试数据。运行设备测试需要日历、通知和准时闹钟权限，使用独立测试设备。
 
-md3.4 已通过 12 项独立单元测试、Debug/Release 编译及 Release APK 签名验证。Android 15 独立测试设备验证了进程退出后连续两次提醒；最终混淆 Release 在确认进程不存在且 `deviceidle` 处于 `IDLE` 后，也实际收到了包含教室、考场和座位的课程、考试通知。
+提醒已经通过独立单元与设备集成测试，并完成 Debug/Release 编译与 APK 签名验证。Android 15 独立测试设备验证了进程退出后连续两次提醒；最终混淆 Release 在确认进程不存在且 `deviceidle` 处于 `IDLE` 后，也实际收到了包含教室、考场和座位的课程、考试通知。
 
 测试版包名为 cn.ifafu.ifafu.debug，可与原版共存。缺少 key-release.properties 时，Release 使用开发签名，不能覆盖官方不同签名的安装包。正式发布应配置自己的签名。
 
-保留原项目许可证和原作者署名。旧工程中的部分测试依赖原作者本机文件，CI 仅运行新增的独立回归测试。
+感谢 [woolsen/iFAFU](https://github.com/woolsen/iFAFU) 原作者及贡献者，保留原作者署名与各组件的开源许可。旧工程中的部分测试依赖原作者本机文件，CI 仅运行新增的独立回归测试。

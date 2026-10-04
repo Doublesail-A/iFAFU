@@ -6,8 +6,7 @@ import android.view.View
 import cn.ifafu.ifafu.util.ColorPool
 import com.google.android.material.color.utilities.ColorUtils
 import com.google.android.material.color.utilities.Contrast
-import com.google.android.material.color.utilities.Hct
-import com.google.android.material.color.utilities.SchemeTonalSpot
+import com.google.android.material.color.utilities.TonalPalette
 import java.util.Locale
 
 /** Persistent subject identities with classic Material hue families and native tonal palettes. */
@@ -15,42 +14,32 @@ object CourseColorPalette {
     private val annotation = Regex(
         "^(?:[\\[【（(「『]\\s*(?:调课|补课|停课|重修)\\s*[\\]】）)」』]\\s*)+"
     )
-    // Classic Material 300 references retain distinct hue families.
-    // Google's SchemeTonalSpot supplies the restrained chroma; no custom color
-    // extraction, RGB blending or HCT hue/chroma formula is used.
-    // Tone 70 keeps course blocks stronger than pale tone-90 theme containers.
+    // Restore the supplied preview's actual swatches. Persistent identities still
+    // keep a rescheduled lesson together with its original subject.
     private val references = intArrayOf(
-        0xff64b5f6.toInt(), // Blue
-        0xffffb74d.toInt(), // Orange
-        0xffba68c8.toInt(), // Purple
-        0xff4db6ac.toInt(), // Teal
-        0xffa1887f.toInt(), // Brown
-        0xff7986cb.toInt(), // Indigo
-        0xff81c784.toInt(), // Green
-        0xffff8a65.toInt(), // Deep Orange
-        0xff4dd0e1.toInt(), // Cyan
-        0xff4fc3f7.toInt(), // Light Blue
-        0xffffd54f.toInt(), // Amber
-        0xffdce775.toInt(), // Lime
-        0xffe57373.toInt(), // Red
-        0xff9575cd.toInt(), // Deep Purple
-        0xfff06292.toInt(), // Pink
-        0xffaed581.toInt(), // Light Green
-        0xff90a4ae.toInt(), // Blue Grey
-        0xfffff176.toInt(), // Yellow
-        0xffe0e0e0.toInt(), // Grey
+        0xfff0bfce.toInt(), // Soft rose
+        0xffffbd72.toInt(), // Orange: supplied preview
+        0xffcfb8da.toInt(), // Mauve
+        0xffa2d6bf.toInt(), // Mint green
+        0xffddbfab.toInt(), // Sand
+        0xffb7bce6.toInt(), // Indigo
+        0xffa7c2e1.toInt(), // Blue: supplied preview
+        0xffc0b2e4.toInt(), // Lavender: supplied preview
+        0xffa9d4ac.toInt(), // Green; visually separated from math
+        0xffb3d6e7.toInt(), // Sky blue
+        0xff92d8ce.toInt(), // Teal: supplied preview
+        0xffd6ddb0.toInt(), // Lime
+        0xffffb99a.toInt(), // Coral: supplied preview
+        0xffedabc2.toInt(), // Pink: supplied preview
+        0xffddb2a3.toInt(), // Peach: supplied preview
+        0xffbfd59e.toInt(), // Light green
+        0xffc0c8d2.toInt(), // Blue grey
+        0xffedd393.toInt(), // Soft yellow
+        0xffc9c5cf.toInt(), // Neutral
     )
-    private val palettes = references.mapIndexed { index, reference ->
-        val scheme = SchemeTonalSpot(Hct.fromInt(reference), false, 0.0)
-        // Achromatic references use native neutral roles instead of inventing
-        // a hue from a grey seed, which can duplicate a cyan course color.
-        when (index) {
-            16 -> scheme.secondaryPalette // Blue Grey
-            18 -> scheme.neutralPalette // Grey
-            else -> scheme.primaryPalette
-        }
-    }
-    private val lightTones = intArrayOf(70, 75, 65, 80, 60)
+    // Only Google MCU generates the dark and overflow tones.
+    private val palettes = references.map { TonalPalette.fromInt(it) }
+    private val lightTones = intArrayOf(0, 84, 68, 90, 60)
     private val darkTones = intArrayOf(40, 45, 35, 50, 30)
 
     @JvmStatic
@@ -93,7 +82,8 @@ object CourseColorPalette {
     internal fun color(index: Int, dark: Boolean): Int {
         val family = index % palettes.size
         val round = (index / palettes.size) % lightTones.size
-        return palettes[family].tone(if (dark) darkTones[round] else lightTones[round])
+        return if (!dark && round == 0) references[family]
+        else palettes[family].tone(if (dark) darkTones[round] else lightTones[round])
     }
 
     internal fun foreground(background: Int): Int {

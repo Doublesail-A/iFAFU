@@ -24,6 +24,8 @@ class MainMenuHandler(private val context: Context) {
      */
     fun handle(menu: MenuVO): Boolean {
         when (menu.id) {
+            R.id.menu_schedule_tools ->
+                startActivityByClazz(cn.ifafu.ifafu.schedule.ScheduleToolsActivity::class.java)
             R.id.menu_exam_list ->
                 startActivityByClazz(ExamListActivity::class.java)
             R.id.menu_score_list ->

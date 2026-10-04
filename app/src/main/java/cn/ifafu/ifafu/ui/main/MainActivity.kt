@@ -220,7 +220,7 @@ class MainActivity : BaseActivity() {
                 Intent(this, SettingActivity::class.java),
                 Constants.ACTIVITY_SETTING,
             )
-            R.id.menu_upgrade -> viewModel.upgradeApp()
+            R.id.menu_upgrade -> cn.ifafu.ifafu.update.GitHubUpdateChecker.check(this)
             else -> menuHandler.handle(MenuVO(item.itemId, 0, item.title.toString()))
         }
         return true

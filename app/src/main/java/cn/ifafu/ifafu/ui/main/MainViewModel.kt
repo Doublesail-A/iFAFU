@@ -5,15 +5,12 @@ import cn.ifafu.ifafu.ui.common.BaseViewModel
 import cn.ifafu.ifafu.entity.GlobalSetting
 import cn.ifafu.ifafu.entity.User
 import cn.ifafu.ifafu.bean.vo.Resource
-import cn.ifafu.ifafu.repository.OtherRepository
 import cn.ifafu.ifafu.repository.UserRepository
 import cn.ifafu.ifafu.repository.GlobalSettingRepository
 import cn.ifafu.ifafu.ui.main.vo.CheckoutResult
 import cn.ifafu.ifafu.ui.main.vo.DeleteResult
 import cn.ifafu.ifafu.ui.main.vo.MainTheme
 import cn.ifafu.ifafu.util.toLiveData
-import com.blankj.utilcode.util.AppUtils
-import com.blankj.utilcode.util.DeviceUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -23,7 +20,6 @@ import javax.inject.Inject
 class MainViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val globalSettingRepository: GlobalSettingRepository,
-    private val otherRepository: OtherRepository,
 ) : BaseViewModel() {
 
     private val _checkoutResult = MutableLiveData<CheckoutResult>()
@@ -68,11 +64,6 @@ class MainViewModel @Inject constructor(
             /* 初始化User */
             val user = userRepository.getUser()
             _user.postValue(user)
-            /* 提交访问量 */
-            val versionName = AppUtils.getAppVersionName()
-            val versionCode = AppUtils.getAppVersionCode()
-            val systemVersion = DeviceUtils.getSDKVersionCode()
-            otherRepository.once(versionCode, versionName, systemVersion)
         }
     }
 
@@ -134,27 +125,6 @@ class MainViewModel @Inject constructor(
             userRepository.checkTo(user)
             _checkoutResult.postValue(CheckoutResult.Success(user))
             _user.postValue(user)
-        }
-    }
-
-    /**
-     * 检查更新
-     */
-    fun upgradeApp() {
-        viewModelScope.launch {
-            when (val res = otherRepository.getNewVersion()) {
-                is Resource.Success -> {
-                    if (res.data.versionCode <= AppUtils.getAppVersionCode()) {
-                        this@MainViewModel.toastInMain("当前为最新版本")
-                    } else {
-                        this@MainViewModel.toastInMain("有更新！最新版本为:${res.data.versionName}\n若未自动更新，请前往ifafu官网手动更新")
-                    }
-                }
-                is Resource.Failure -> {
-                    this@MainViewModel.toastInMain(res.message)
-                }
-                is Resource.Loading -> Unit
-            }
         }
     }
 

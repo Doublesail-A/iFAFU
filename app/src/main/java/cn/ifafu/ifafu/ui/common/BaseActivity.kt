@@ -14,7 +14,6 @@ import cn.ifafu.ifafu.bean.vo.Resource
 import cn.ifafu.ifafu.ui.common.dialog.LoadingDialog
 import cn.ifafu.ifafu.util.ThemeManager
 import com.google.android.material.color.MaterialColors
-import com.google.android.material.snackbar.Snackbar
 import com.gyf.immersionbar.ImmersionBar
 
 abstract class BaseActivity : AppCompatActivity {
@@ -106,13 +105,11 @@ abstract class BaseActivity : AppCompatActivity {
         super.onStop()
     }
 
-    protected open fun snackbar(message: String) {
-        Snackbar.make(findViewById<View>(android.R.id.content), message, Snackbar.LENGTH_LONG)
-            .setTextMaxLines(4).show()
-    }
+    protected open fun snackbar(message: String) = showToast(message)
 
     protected open fun showToast(message: String) {
-        snackbar(message)
+        toast?.cancel()
+        toast = Toast.makeText(this, message, Toast.LENGTH_SHORT).also { it.show() }
     }
 
     fun <T> LiveData<Resource<T>>.observeResource(

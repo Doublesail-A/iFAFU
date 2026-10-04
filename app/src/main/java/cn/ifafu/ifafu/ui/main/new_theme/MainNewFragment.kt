@@ -121,7 +121,7 @@ class MainNewFragment : BaseFragment(R.layout.main_new_fragment), View.OnClickLi
     override fun onClick(v: View?) {
         when (v?.id) {
             R.id.btn_menu -> binding.drawerMain.open()
-            R.id.tv_nav_update -> activityViewModel.upgradeApp()
+            R.id.tv_nav_update -> cn.ifafu.ifafu.update.GitHubUpdateChecker.check(requireActivity())
             R.id.tv_nav_about -> startActivity(Intent(context, AboutActivity::class.java))
             R.id.tv_nav_setting -> {
                 val intent = Intent(context, SettingActivity::class.java)

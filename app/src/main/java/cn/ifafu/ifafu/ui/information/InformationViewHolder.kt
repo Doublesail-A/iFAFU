@@ -11,7 +11,7 @@ import cn.ifafu.ifafu.bean.dto.Information
 import cn.ifafu.ifafu.databinding.InformationListItemBinding
 import cn.ifafu.ifafu.util.DateUtils
 import com.blankj.utilcode.util.ClipboardUtils
-import com.blankj.utilcode.util.ToastUtils
+import cn.ifafu.ifafu.util.SystemToast
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import java.text.SimpleDateFormat
@@ -117,7 +117,7 @@ open class InformationViewHolder(
                 contactType == Information.CONTACT_TYPE_QQ
         binding.contactLayout.setOnLongClickListener {
             ClipboardUtils.copyText(contact)
-            ToastUtils.showShort(R.string.contact_copy_to_clipboard)
+            SystemToast.show(itemView.context.getString(R.string.contact_copy_to_clipboard))
             true
         }
         val contactIcon: Int = when (contactType) {

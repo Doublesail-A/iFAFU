@@ -146,7 +146,7 @@ class MainOldFragment : BaseFragment(R.layout.main_old_fragment), OnMenuItemClic
                 R.id.menu_user_management ->
                     activityViewModel.showMultiUserDialog()
                 R.id.menu_upgrade ->
-                    activityViewModel.upgradeApp()
+                    cn.ifafu.ifafu.update.GitHubUpdateChecker.check(requireActivity())
             }
         }
         mDrawerLayout.closeDrawer(GravityCompat.START)

@@ -17,6 +17,7 @@ import cn.ifafu.ifafu.ui.main.MainActivity
 import cn.ifafu.ifafu.ui.view.LoadingDialog
 import cn.ifafu.ifafu.ui.web.WebActivity
 import com.blankj.utilcode.util.BarUtils
+import com.blankj.utilcode.util.SPUtils
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -36,7 +37,7 @@ class LoginActivity : BaseActivity() {
         binding = bind(R.layout.login_activity)
 
         BarUtils.transparentStatusBar(this)
-        BarUtils.setStatusBarLightMode(this, true)
+        setLightUiBar()
         BarUtils.addMarginTopEqualStatusBarHeight(binding.root)
 
         binding.vm = viewModel
@@ -49,17 +50,11 @@ class LoginActivity : BaseActivity() {
         binding.btnClose.isVisible = originActivityCode != Constants.ACTIVITY_SPLASH
         binding.btnClose.setOnClickListener { finish() }
 
-        binding.btnLogin.setOnClickListener {
-            if (!binding.checkboxPolicy.isChecked) {
-                snackbar("请先同意《隐私政策》")
-                return@setOnClickListener
-            }
-            viewModel.login()
-        }
+        binding.btnLogin.setOnClickListener { attemptLogin() }
 
         binding.etPassword.setOnEditorActionListener { v, actionId, event ->
             if (actionId == EditorInfo.IME_ACTION_DONE) {
-                viewModel.login()
+                attemptLogin()
                 true
             } else {
                 false
@@ -68,13 +63,25 @@ class LoginActivity : BaseActivity() {
 
 
         // 隐私政策
-        binding.checkboxPolicy.isChecked = true
+        val consent = SPUtils.getInstance("app_consent")
+        binding.checkboxPolicy.isChecked = consent.getBoolean("privacy_accepted", false)
+        binding.checkboxPolicy.setOnCheckedChangeListener { _, checked ->
+            consent.put("privacy_accepted", checked)
+        }
         binding.tvPolicy.setOnClickListener {
             WebActivity.intentFor(this, Constants.PRIVACY_POLICY_URL, "《隐私政策》")
                 .also { intent -> startActivity(intent) }
         }
 
         initViewModel()
+    }
+
+    private fun attemptLogin() {
+        if (!binding.checkboxPolicy.isChecked) {
+            showToast("请先同意《隐私政策》")
+            return
+        }
+        viewModel.login()
     }
 
     private fun initViewModel() {

@@ -85,11 +85,6 @@
         <activity
             android:name=".ui.timetable_setting.TimetableSettingActivity"
             android:launchMode="singleTask" />
-        <activity
-            android:name="com.tencent.bugly.beta.ui.BetaActivity"
-            android:configChanges="keyboardHidden|orientation|screenSize|locale"
-            android:launchMode="singleTask"
-            android:theme="@android:style/Theme.Translucent" />
         <!--        <meta-data-->
         <!--            android:name="BUGLY_APP_CHANNEL"-->
         <!--            android:value="${channel}" />-->

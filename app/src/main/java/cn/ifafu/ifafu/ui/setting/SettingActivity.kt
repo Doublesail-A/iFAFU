@@ -24,9 +24,6 @@ class SettingActivity : BaseActivity() {
 
         binding.tbSetting.setNavigationOnClickListener { finish() }
         binding.cardTheme.setOnClickListener { mViewModel.requestThemePicker() }
-        binding.scheduleTools.setOnClickListener {
-            startActivity(android.content.Intent(this, cn.ifafu.ifafu.schedule.ScheduleToolsActivity::class.java))
-        }
 
         mViewModel.settings.observe(this, {
             binding.tvThemeValue.text = it.filterIsInstance<TextViewItem>()

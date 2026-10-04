@@ -4,7 +4,7 @@ import androidx.annotation.LayoutRes
 import androidx.appcompat.app.ActionBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
-import com.google.android.material.snackbar.Snackbar
+import android.widget.Toast
 
 abstract class BaseFragment : Fragment {
 
@@ -13,7 +13,7 @@ abstract class BaseFragment : Fragment {
     constructor(@LayoutRes contentLayoutId: Int) : super(contentLayoutId)
 
     protected open fun snackbar(message: String) {
-        Snackbar.make(requireView(), message, Snackbar.LENGTH_SHORT).show()
+        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 
     fun getSupportActionBar(): ActionBar? {

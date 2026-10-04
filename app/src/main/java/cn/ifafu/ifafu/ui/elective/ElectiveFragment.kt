@@ -9,7 +9,7 @@ import cn.ifafu.ifafu.R
 import cn.ifafu.ifafu.databinding.ElectiveFragmentBinding
 import cn.ifafu.ifafu.entity.Score
 import cn.ifafu.ifafu.ui.view.LoadingDialog
-import com.blankj.utilcode.util.ToastUtils
+import cn.ifafu.ifafu.util.SystemToast
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -39,7 +39,7 @@ class ElectiveFragment : Fragment(R.layout.elective_fragment) {
         }
 
         viewModel.toast.observe(viewLifecycleOwner, {
-            ToastUtils.showShort(it)
+            SystemToast.show(it)
         })
 
         loadingDialog.observe(viewLifecycleOwner, viewModel.loading)

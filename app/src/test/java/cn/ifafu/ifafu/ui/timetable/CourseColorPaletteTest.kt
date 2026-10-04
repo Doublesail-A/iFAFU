@@ -69,7 +69,7 @@ class CourseColorPaletteTest {
         assertEquals(merged, CourseColorPalette.allocate(merged.keys, merged))
     }
 
-    @Test fun nativePalettesBalanceChromaAndAccessibleLabels() {
+    @Test fun previewSwatchesStayExactWithAccessibleDarkTones() {
         val names = (0 until 95).map { "课程" + it }
         val colors = CourseColors(names.associate { CourseColorPalette.identity(it) to names.indexOf(it) })
         listOf(false, true).forEach { dark ->
@@ -81,13 +81,14 @@ class CourseColorPaletteTest {
                 assertEquals(colors.displayColorFor(it, dark), colors.displayColorFor("[调课]" + it, dark))
             }
         }
-        assertEquals(70.0, Hct.fromInt(colors.displayColorFor("课程0", false)).tone, 0.5)
+        assertEquals(0xfff0bfce.toInt(), colors.displayColorFor("课程0", false))
         assertEquals(40.0, Hct.fromInt(colors.displayColorFor("课程0", true)).tone, 0.5)
         // The softer visible course color also seeds the app theme and calendars.
         assertEquals(colors.displayColorFor("课程0", false), colors.seedFor("课程0"))
-        names.take(19).forEach {
-            assertTrue(Hct.fromInt(colors.displayColorFor(it, false)).chroma < 38.0)
-            assertTrue(Hct.fromInt(colors.displayColorFor(it, true)).chroma < 38.0)
+        mapOf(1 to 0xffffbd72.toInt(), 6 to 0xffa7c2e1.toInt(), 7 to 0xffc0b2e4.toInt(),
+            10 to 0xff92d8ce.toInt(), 12 to 0xffffb99a.toInt(), 13 to 0xffedabc2.toInt(),
+            14 to 0xffddb2a3.toInt()).forEach { (index, swatch) ->
+            assertEquals(swatch, colors.displayColorFor("课程" + index, false))
         }
     }
 
