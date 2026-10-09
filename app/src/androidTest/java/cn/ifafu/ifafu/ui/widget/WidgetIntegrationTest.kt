@@ -63,10 +63,10 @@ class WidgetIntegrationTest {
                 assertTrue(contrast(colors.ink, colors.surface) >= 4.5)
                 assertTrue(contrast(colors.secondary, colors.surface) >= 4.5)
                 for ((layout, size) in listOf(R.layout.timetable_widget to (280 to 60),
-                    R.layout.widget_schedule_compact to (110 to 150), R.layout.widget_schedule_compact to (150 to 190),
-                    R.layout.widget_schedule_large to (280 to 150), R.layout.widget_schedule_large to (280 to 190))) {
+                    R.layout.widget_schedule_compact to (110 to 140), R.layout.widget_schedule_compact to (150 to 190),
+                    R.layout.widget_schedule_large to (280 to 120), R.layout.widget_schedule_large to (280 to 150), R.layout.widget_schedule_large to (280 to 190))) {
                     instrumentation.runOnMainSync {
-                        val view = ScheduleWidget.render(themed, layout, events, day, now, dark, roomy = size.second >= 180)
+                        val view = ScheduleWidget.render(themed, layout, events, day, now, dark, roomy = size.second >= if (layout == R.layout.widget_schedule_large) 150 else 180)
                             .apply(themed, FrameLayout(themed))
                         val density = themed.resources.displayMetrics.density
                         val width = (size.first * density).toInt(); val height = (size.second * density).toInt()
@@ -74,8 +74,9 @@ class WidgetIntegrationTest {
                             View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
                         view.layout(0, 0, width, height)
                         assertEquals(course.title, view.findViewById<TextView>(R.id.widget_title).text.toString())
-                        val ids = if (layout == R.layout.timetable_widget) listOf(R.id.widget_location, R.id.widget_countdown)
-                            else listOf(R.id.widget_location, R.id.widget_countdown, R.id.widget_location_2, R.id.widget_countdown_2)
+                        val ids = (if (layout == R.layout.timetable_widget) listOf(R.id.widget_location, R.id.widget_countdown)
+                            else listOf(R.id.widget_location, R.id.widget_countdown, R.id.widget_location_2, R.id.widget_countdown_2)) +
+                            if (layout == R.layout.widget_schedule_large && size.second >= 150) listOf(R.id.widget_time, R.id.widget_time_2) else emptyList()
                         for (id in ids) {
                             val text = view.findViewById<TextView>(id)
                             assertTrue("Required text must have a complete visible line: " + id,
@@ -91,7 +92,7 @@ class WidgetIntegrationTest {
                             assertEquals("考试 · 普通化学", view.findViewById<TextView>(R.id.widget_title_2).text.toString())
                             assertEquals("120分钟后考试", view.findViewById<TextView>(R.id.widget_countdown_2).text.toString())
                         } else assertEquals(View.GONE, view.findViewById<View>(R.id.widget_row_2).visibility)
-                        if (layout == R.layout.widget_schedule_large && size.second >= 180) {
+                        if (layout == R.layout.widget_schedule_large && size.second >= 150) {
                             assertTrue(view.findViewById<TextView>(R.id.widget_time).text.toString().contains("林老师"))
                             assertEquals(View.VISIBLE, view.findViewById<View>(R.id.widget_time).visibility)
                         }

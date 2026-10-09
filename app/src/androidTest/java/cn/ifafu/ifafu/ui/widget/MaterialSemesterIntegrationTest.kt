@@ -26,6 +26,9 @@ import java.util.concurrent.atomic.AtomicReference
 @RunWith(AndroidJUnit4::class)
 class MaterialSemesterIntegrationTest {
     @Test fun materialMenusKeepYearAndTermSelectionAndCancellation() {
+        // Root this shared desugared API in the separate verification APK.
+        val marker = InstrumentationRegistry.getArguments().getString("class", "material")
+        assertEquals(java.util.Arrays.hashCode(arrayOf(marker)), java.util.Objects.hash(marker))
         val selected = AtomicReference<Pair<Int, Int>>()
         ActivityScenario.launch(LoginActivity::class.java).use { scenario ->
             fun open() = scenario.onActivity { activity ->

@@ -59,15 +59,15 @@ object ScheduleWidget {
         ids.forEach { id ->
             val views = if (Build.VERSION.SDK_INT >= 31) RemoteViews(mapOf(
                 SizeF(250f, 60f) to render(context, R.layout.timetable_widget, today, light, now, dark),
-                SizeF(110f, 150f) to render(context, R.layout.widget_schedule_compact, today, light, now, dark),
+                SizeF(110f, 140f) to render(context, R.layout.widget_schedule_compact, today, light, now, dark),
                 SizeF(110f, 180f) to render(context, R.layout.widget_schedule_compact, today, light, now, dark, roomy = true),
-                SizeF(250f, 150f) to render(context, R.layout.widget_schedule_large, today, light, now, dark),
-                SizeF(250f, 180f) to render(context, R.layout.widget_schedule_large, today, light, now, dark, roomy = true)
+                SizeF(250f, 120f) to render(context, R.layout.widget_schedule_large, today, light, now, dark),
+                SizeF(250f, 150f) to render(context, R.layout.widget_schedule_large, today, light, now, dark, roomy = true)
             )) else {
                 val options = manager.getAppWidgetOptions(id)
                 val width = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 250)
                 val height = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 60)
-                render(context, layoutFor(width, height), today, colors, now, roomy = height >= 180)
+                render(context, layoutFor(width, height), today, colors, now, roomy = height >= if (width >= 250) 150 else 180)
             }
             manager.updateAppWidget(id, views)
         }
@@ -87,7 +87,7 @@ object ScheduleWidget {
 
     internal fun layoutFor(width: Int, height: Int) = when {
         width < 250 -> R.layout.widget_schedule_compact
-        height >= 150 -> R.layout.widget_schedule_large
+        height >= 120 -> R.layout.widget_schedule_large
         else -> R.layout.timetable_widget
     }
 
@@ -147,7 +147,7 @@ object ScheduleWidget {
             setTextViewText(places[index], event.location.ifBlank { "地点待定" })
             setTextViewText(countdowns[index], minutes.toString() + "分钟后" + if (event.kind == "exam") "考试" else "上课")
             setTextViewText(times[index], listOf(event.teacher, timeText(event)).filter { it.isNotBlank() }.joinToString(" · "))
-            setViewVisibility(times[index], if (!compact && layout != R.layout.timetable_widget) View.VISIBLE else View.GONE)
+            setViewVisibility(times[index], if (roomy && !compact && layout != R.layout.timetable_widget) View.VISIBLE else View.GONE)
             if (compact) setInt(titles[index], "setMaxLines", if (roomy) 2 else 1)
             tint(titles[index], "setTextColor", colors.ink, nightColors?.ink)
             tint(places[index], "setTextColor", colors.ink, nightColors?.ink)
