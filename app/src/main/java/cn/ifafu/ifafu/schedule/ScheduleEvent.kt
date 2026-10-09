@@ -11,7 +11,8 @@ import java.util.Date
 data class ScheduleEvent(
     val uid: String, val subject: String, val title: String, val location: String,
     val description: String, val start: Long, val end: Long, val color: Int,
-    val kind: String = "course", val scope: String = ""
+    val kind: String = "course", val scope: String = "",
+    val teacher: String = "", val week: Int = 0
 ) {
     val reminderAt: Long get() = start - (if (kind == "exam") 30 else 15) * 60_000L
 }
@@ -47,7 +48,7 @@ object ScheduleEvents {
                     subject, course.name, course.classroom,
                     "教师：" + course.teacher + "\n第 " + week + " 周 · 第 " +
                         course.beginNode + "–" + course.endNode + " 节\n来自 iFAFU",
-                    start, end, color(course.name), scope = scope)
+                    start, end, color(course.name), scope = scope, teacher = course.teacher, week = week)
             }
         }.distinctBy { it.uid }.sortedBy { it.start }
     }

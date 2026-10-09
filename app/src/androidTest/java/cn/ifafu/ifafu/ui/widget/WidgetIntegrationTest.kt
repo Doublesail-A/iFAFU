@@ -47,56 +47,67 @@ class WidgetIntegrationTest {
             ThemePreferences.setTheme(context, GlobalSetting.THEME_COURSE)
             for (night in listOf(Configuration.UI_MODE_NIGHT_NO, Configuration.UI_MODE_NIGHT_YES)) {
                 val configuration = Configuration(context.resources.configuration).apply {
-                    uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or night
-                    fontScale = 1f
+                    uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or night; fontScale = 1f
                 }
                 val themed = context.createConfigurationContext(configuration)
-                val event = fixture()
-                val now = System.currentTimeMillis()
-                val colors = ScheduleWidget.palette(themed, listOf(event), now)
+                val now = java.util.Calendar.getInstance().apply { clear(); set(2026, 9, 9, 8, 0) }.timeInMillis
+                val course = fixture(start = now + 12 * 60000).copy(teacher = "林老师", week = 6)
+                val exam = fixture("exam", now + 2 * 3600000).copy(title = "普通化学", location = "考场201")
+                val events = listOf(course, exam)
+                val colors = ScheduleWidget.palette(themed, events, now)
                 fun paletteFor(mode: Int) = ScheduleWidget.palette(context.createConfigurationContext(
                     Configuration(configuration).apply { uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or mode }
-                ), listOf(event), now)
-                val dayColors = paletteFor(Configuration.UI_MODE_NIGHT_NO)
-                val nightColors = paletteFor(Configuration.UI_MODE_NIGHT_YES)
+                ), events, now)
+                val day = paletteFor(Configuration.UI_MODE_NIGHT_NO)
+                val dark = paletteFor(Configuration.UI_MODE_NIGHT_YES)
                 assertTrue(contrast(colors.ink, colors.surface) >= 4.5)
                 assertTrue(contrast(colors.secondary, colors.surface) >= 4.5)
-                assertTrue(contrast(colors.onContainer, colors.container) >= 4.5)
-                for ((layout, size) in listOf(R.layout.widget_schedule_compact to (110 to 150), R.layout.widget_schedule_compact to (150 to 150),
-                        R.layout.timetable_widget to (280 to 150), R.layout.widget_schedule_large to (280 to 240))) {
+                for ((layout, size) in listOf(R.layout.timetable_widget to (280 to 60),
+                    R.layout.widget_schedule_compact to (110 to 150), R.layout.widget_schedule_compact to (150 to 190),
+                    R.layout.widget_schedule_large to (280 to 150), R.layout.widget_schedule_large to (280 to 190))) {
                     instrumentation.runOnMainSync {
-                        val view = ScheduleWidget.render(themed, layout, event, dayColors, now, nightColors).apply(themed, FrameLayout(themed))
+                        val view = ScheduleWidget.render(themed, layout, events, day, now, dark, roomy = size.second >= 180)
+                            .apply(themed, FrameLayout(themed))
                         val density = themed.resources.displayMetrics.density
-                        val width = (size.first * density).toInt()
-                        val height = (size.second * density).toInt()
+                        val width = (size.first * density).toInt(); val height = (size.second * density).toInt()
                         view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
                             View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
                         view.layout(0, 0, width, height)
-                        assertEquals(event.title, view.findViewById<TextView>(R.id.widget_title).text.toString())
-                        val location = view.findViewById<TextView>(R.id.widget_location)
-                        assertEquals("创104", location.text.toString())
-                        assertTrue("Location must have a complete visible line", location.height >=
-                            (location.paint.fontMetrics.descent - location.paint.fontMetrics.ascent).toInt())
-                        val rect = android.graphics.Rect()
-                        location.getDrawingRect(rect)
-                        (view as android.view.ViewGroup).offsetDescendantRectToMyCoords(location, rect)
-                        assertTrue("Location exceeds widget bounds: " + rect + " height=" + height, rect.bottom <= height)
+                        assertEquals(course.title, view.findViewById<TextView>(R.id.widget_title).text.toString())
+                        val ids = if (layout == R.layout.timetable_widget) listOf(R.id.widget_location, R.id.widget_countdown)
+                            else listOf(R.id.widget_location, R.id.widget_countdown, R.id.widget_location_2, R.id.widget_countdown_2)
+                        for (id in ids) {
+                            val text = view.findViewById<TextView>(id)
+                            assertTrue("Required text must have a complete visible line: " + id,
+                                text.height >= (text.paint.fontMetrics.descent - text.paint.fontMetrics.ascent).toInt())
+                            val rect = android.graphics.Rect(); text.getDrawingRect(rect)
+                            (view as android.view.ViewGroup).offsetDescendantRectToMyCoords(text, rect)
+                            assertTrue("Text exceeds widget bounds: " + rect + " height=" + height, rect.bottom <= height)
+                            assertEquals("Required text cannot be ellipsized: " + text.text, 0, text.layout.getEllipsisCount(0))
+                        }
+                        assertEquals("12分钟后上课", view.findViewById<TextView>(R.id.widget_countdown).text.toString())
                         assertEquals(colors.ink, view.findViewById<TextView>(R.id.widget_title).currentTextColor)
-                        assertTrue(view.findViewById<TextView>(R.id.widget_time).text.toString().contains("–"))
+                        if (layout != R.layout.timetable_widget) {
+                            assertEquals("考试 · 普通化学", view.findViewById<TextView>(R.id.widget_title_2).text.toString())
+                            assertEquals("120分钟后考试", view.findViewById<TextView>(R.id.widget_countdown_2).text.toString())
+                        } else assertEquals(View.GONE, view.findViewById<View>(R.id.widget_row_2).visibility)
+                        if (layout == R.layout.widget_schedule_large && size.second >= 180) {
+                            assertTrue(view.findViewById<TextView>(R.id.widget_time).text.toString().contains("林老师"))
+                            assertEquals(View.VISIBLE, view.findViewById<View>(R.id.widget_time).visibility)
+                        }
                         val bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
                         view.draw(android.graphics.Canvas(bitmap))
-                        val file = java.io.File(context.getExternalFilesDir(null), "widget-" + layout + "-" + night + ".png")
-                        file.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+                        java.io.File(context.getExternalFilesDir(null), "today-widget-" + layout + "-" + size.second + "-" + night + ".png")
+                            .outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
                         bitmap.recycle()
                     }
                 }
                 instrumentation.runOnMainSync {
-                    val exam = fixture("exam").copy(end = 0)
-                    val view = ScheduleWidget.render(themed, R.layout.timetable_widget, exam, colors, now).apply(themed, FrameLayout(themed))
-                    assertEquals("下一场考试", view.findViewById<TextView>(R.id.widget_kind).text.toString())
-                    assertFalse(view.findViewById<TextView>(R.id.widget_time).text.toString().contains("–"))
-                    val empty = ScheduleWidget.render(themed, R.layout.widget_schedule_compact, null, colors, now).apply(themed, FrameLayout(themed))
-                    assertEquals("暂无后续安排", empty.findViewById<TextView>(R.id.widget_title).text.toString())
+                    val tomorrow = course.copy(start = now + 86400000)
+                    val view = ScheduleWidget.render(themed, R.layout.widget_schedule_compact, listOf(tomorrow), colors, now)
+                        .apply(themed, FrameLayout(themed))
+                    assertEquals(View.VISIBLE, view.findViewById<View>(R.id.widget_empty).visibility)
+                    assertEquals(View.GONE, view.findViewById<View>(R.id.widget_content).visibility)
                 }
             }
         } finally { ThemePreferences.setTheme(context, original) }
@@ -135,9 +146,10 @@ class WidgetIntegrationTest {
                 val id = host.allocateAppWidgetId(); ids.add(id)
                 assertTrue("Test launcher needs appwidget grantbind", manager.bindAppWidgetIdIfAllowed(id, ComponentName(context, provider)))
             }
-            val events = listOf(fixture(), fixture("exam", System.currentTimeMillis() + 1800000))
+            val events = listOf(fixture().copy(teacher = "林老师", week = 6), fixture("exam", System.currentTimeMillis() + 1800000))
             ScheduleWidgetStore.save(context, events, account)
-            assertEquals("exam", UpcomingSchedule.next(ScheduleWidgetStore.load(context), System.currentTimeMillis())?.kind)
+            assertEquals("exam", UpcomingSchedule.today(ScheduleWidgetStore.load(context), System.currentTimeMillis()).first().kind)
+            assertEquals("林老师", ScheduleWidgetStore.load(context).first { it.kind == "course" }.teacher)
             // Native RemoteViews are pushed to every registered provider, without enabling notifications.
             ScheduleWidget.updateAll(context)
             for (id in ids) {
@@ -146,7 +158,7 @@ class WidgetIntegrationTest {
                 instrumentation.runOnMainSync {
                     val view = host.createView(context, id, info)
                     assertNotNull(view.findViewById<TextView>(R.id.widget_title))
-                    assertEquals("下一场考试", view.findViewById<TextView>(R.id.widget_kind).text.toString())
+                    assertTrue(view.findViewById<TextView>(R.id.widget_title).text.toString().startsWith("考试 · "))
                 }
             }
             SPUtils.getInstance(Constants.SP_USER_INFO).put("account", "another-account", true)

@@ -13,7 +13,7 @@ import cn.ifafu.ifafu.ui.common.BaseFragment
 import cn.ifafu.ifafu.ui.view.LoadingDialog
 import cn.ifafu.ifafu.ui.view.SemesterOptionPicker
 import cn.ifafu.ifafu.util.trimEnd
-import com.afollestad.materialdialogs.MaterialDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -26,19 +26,6 @@ class ScoreListFragment : BaseFragment(), View.OnClickListener {
     private val semesterPicker by lazy {
         SemesterOptionPicker(requireActivity()) { year, term ->
             viewModel.switchYearAndTerm(year, term)
-        }
-    }
-    private val iesDetailDialog by lazy {
-        MaterialDialog(requireContext()).apply {
-            title(text = "智育分计算详情")
-            negativeButton(text = "计算规则") {
-                MaterialDialog(requireContext()).show {
-                    title(text = "智育分计算规则")
-                    message(res = R.string.score_ies_rule)
-                    positiveButton(text = "收到")
-                }
-            }
-            positiveButton(text = "知道了")
         }
     }
 
@@ -63,7 +50,12 @@ class ScoreListFragment : BaseFragment(), View.OnClickListener {
 
         viewModel.iesDetail.observe(viewLifecycleOwner) { event ->
             event.runContentIfNotHandled { detail ->
-                iesDetailDialog.show { message(text = detail) }
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle("智育分计算详情").setMessage(detail)
+                    .setNeutralButton("计算规则") { _, _ ->
+                        MaterialAlertDialogBuilder(requireContext()).setTitle("智育分计算规则")
+                            .setMessage(R.string.score_ies_rule).setPositiveButton("知道了", null).show()
+                    }.setPositiveButton("知道了", null).show()
             }
         }
         viewModel.scoresResource.observe(viewLifecycleOwner) { resource ->

@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.os.Build
 import android.util.SizeF
+import android.view.View
 import android.view.ContextThemeWrapper
 import android.widget.RemoteViews
 import cn.ifafu.ifafu.R
@@ -24,7 +25,6 @@ import com.google.android.material.color.utilities.Hct
 import com.google.android.material.color.utilities.MaterialDynamicColors
 import com.google.android.material.color.utilities.SchemeTonalSpot
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -49,7 +49,7 @@ object ScheduleWidget {
         if (ids.isEmpty()) return
         val now = System.currentTimeMillis()
         val events = ScheduleWidgetStore.load(context)
-        val event = UpcomingSchedule.next(events, now)
+        val today = UpcomingSchedule.today(events, now)
         val colors = palette(context, events, now)
         fun configured(night: Int): Context = context.createConfigurationContext(Configuration(context.resources.configuration).apply {
             uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or night
@@ -58,38 +58,41 @@ object ScheduleWidget {
         val dark = if (Build.VERSION.SDK_INT >= 31) palette(configured(Configuration.UI_MODE_NIGHT_YES), events, now) else null
         ids.forEach { id ->
             val views = if (Build.VERSION.SDK_INT >= 31) RemoteViews(mapOf(
-                SizeF(110f, 150f) to render(context, R.layout.widget_schedule_compact, event, light, now, dark),
-                SizeF(250f, 150f) to render(context, R.layout.timetable_widget, event, light, now, dark),
-                SizeF(250f, 240f) to render(context, R.layout.widget_schedule_large, event, light, now, dark)
+                SizeF(250f, 60f) to render(context, R.layout.timetable_widget, today, light, now, dark),
+                SizeF(110f, 150f) to render(context, R.layout.widget_schedule_compact, today, light, now, dark),
+                SizeF(110f, 180f) to render(context, R.layout.widget_schedule_compact, today, light, now, dark, roomy = true),
+                SizeF(250f, 150f) to render(context, R.layout.widget_schedule_large, today, light, now, dark),
+                SizeF(250f, 180f) to render(context, R.layout.widget_schedule_large, today, light, now, dark, roomy = true)
             )) else {
                 val options = manager.getAppWidgetOptions(id)
-                render(context, layoutFor(options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 250),
-                    options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 110)), event, colors, now)
+                val width = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 250)
+                val height = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 60)
+                render(context, layoutFor(width, height), today, colors, now, roomy = height >= 180)
             }
             manager.updateAppWidget(id, views)
         }
-        // Separate from notifications: no notification or exact-alarm permission is needed.
+        // Non-wakeup refresh: minute labels update while the device is awake; sleeping phones are not woken.
         val time = UpcomingSchedule.nextRefresh(events, now)
         try {
             if (Build.VERSION.SDK_INT >= 23 && (Build.VERSION.SDK_INT < 31 || alarm.canScheduleExactAlarms()))
-                alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, time, pending)
-            else if (Build.VERSION.SDK_INT >= 23) alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, time, pending)
-            else alarm.setExact(AlarmManager.RTC_WAKEUP, time, pending)
+                alarm.setExactAndAllowWhileIdle(AlarmManager.RTC, time, pending)
+            else if (Build.VERSION.SDK_INT >= 23) alarm.setAndAllowWhileIdle(AlarmManager.RTC, time, pending)
+            else alarm.setExact(AlarmManager.RTC, time, pending)
         } catch (_: SecurityException) {
             // The permission can be revoked between checking and registering.
-            if (Build.VERSION.SDK_INT >= 23) alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, time, pending)
-            else alarm.set(AlarmManager.RTC_WAKEUP, time, pending)
+            if (Build.VERSION.SDK_INT >= 23) alarm.setAndAllowWhileIdle(AlarmManager.RTC, time, pending)
+            else alarm.set(AlarmManager.RTC, time, pending)
         }
     }
 
     internal fun layoutFor(width: Int, height: Int) = when {
         width < 250 -> R.layout.widget_schedule_compact
-        height >= 240 -> R.layout.widget_schedule_large
+        height >= 150 -> R.layout.widget_schedule_large
         else -> R.layout.timetable_widget
     }
 
     data class Colors(val surface: Int, val ink: Int, val secondary: Int, val accent: Int,
-        val container: Int, val onContainer: Int)
+        val container: Int, val onContainer: Int, val error: Int)
 
     @SuppressLint("RestrictedApi")
     internal fun palette(context: Context, events: List<ScheduleEvent>, now: Long): Colors {
@@ -102,7 +105,8 @@ object ScheduleWidget {
                 color(com.google.android.material.R.attr.colorOnSurfaceVariant),
                 color(com.google.android.material.R.attr.colorPrimary),
                 color(com.google.android.material.R.attr.colorPrimaryContainer),
-                color(com.google.android.material.R.attr.colorOnPrimaryContainer))
+                color(com.google.android.material.R.attr.colorOnPrimaryContainer),
+                color(com.google.android.material.R.attr.colorError))
         }
         val seed = if (mode == GlobalSetting.THEME_WALLPAPER) ThemePreferences.getWallpaperSeed(context)
             else UpcomingSchedule.next(events.filter { it.kind == "course" }, now)?.color
@@ -112,52 +116,65 @@ object ScheduleWidget {
         val roles = MaterialDynamicColors()
         return Colors(roles.surface().getArgb(scheme), roles.onSurface().getArgb(scheme),
             roles.onSurfaceVariant().getArgb(scheme), roles.primary().getArgb(scheme),
-            roles.primaryContainer().getArgb(scheme), roles.onPrimaryContainer().getArgb(scheme))
+            roles.primaryContainer().getArgb(scheme), roles.onPrimaryContainer().getArgb(scheme),
+            roles.error().getArgb(scheme))
     }
 
-    internal fun render(context: Context, layout: Int, event: ScheduleEvent?, colors: Colors,
-        now: Long, nightColors: Colors? = null): RemoteViews = RemoteViews(context.packageName, layout).apply {
+    internal fun render(context: Context, layout: Int, events: List<ScheduleEvent>, colors: Colors,
+        now: Long, nightColors: Colors? = null, roomy: Boolean = false): RemoteViews =
+        RemoteViews(context.packageName, layout).apply {
         fun tint(id: Int, method: String, light: Int, night: Int?) {
             if (Build.VERSION.SDK_INT >= 31 && night != null) setColorInt(id, method, light, night)
             else setInt(id, method, light)
         }
         tint(R.id.widget_surface, "setColorFilter", colors.surface, nightColors?.surface)
-        tint(R.id.widget_badge_background, "setColorFilter", colors.container, nightColors?.container)
-        tint(R.id.widget_kind, "setTextColor", colors.onContainer, nightColors?.onContainer)
-        tint(R.id.widget_title, "setTextColor", colors.ink, nightColors?.ink)
-        tint(R.id.widget_time, "setTextColor", colors.secondary, nightColors?.secondary)
-        tint(R.id.widget_location, "setTextColor", colors.secondary, nightColors?.secondary)
-        tint(R.id.widget_icon, "setColorFilter", colors.accent, nightColors?.accent)
-        setImageViewResource(R.id.widget_icon, if (event?.kind == "exam") R.drawable.ic_m3_event_note else R.drawable.ic_m3_calendar_month)
-        setTextViewText(R.id.widget_kind, if (event?.kind == "exam") "下一场考试" else "下一门课程")
-        setTextViewText(R.id.widget_title, event?.title ?: "暂无后续安排")
-        setTextViewText(R.id.widget_time, event?.let { timeText(it, now, layout == R.layout.widget_schedule_compact) } ?: "打开 iFAFU 同步课程与考试")
-        setTextViewText(R.id.widget_location, event?.location?.ifBlank { "地点待定" } ?: "")
+        tint(R.id.widget_empty, "setTextColor", colors.secondary, nightColors?.secondary)
+        val titles = intArrayOf(R.id.widget_title, R.id.widget_title_2)
+        val places = intArrayOf(R.id.widget_location, R.id.widget_location_2)
+        val countdowns = intArrayOf(R.id.widget_countdown, R.id.widget_countdown_2)
+        val times = intArrayOf(R.id.widget_time, R.id.widget_time_2)
+        val rows = intArrayOf(R.id.widget_row_1, R.id.widget_row_2)
+        val compact = layout == R.layout.widget_schedule_compact
+        val selected = UpcomingSchedule.today(events, now).take(if (layout == R.layout.timetable_widget) 1 else 2)
+        setViewVisibility(R.id.widget_empty, if (selected.isEmpty()) View.VISIBLE else View.GONE)
+        setViewVisibility(R.id.widget_content, if (selected.isEmpty()) View.GONE else View.VISIBLE)
+        setTextViewText(R.id.widget_empty, "今天接下来的时间留给自己")
+        selected.forEachIndexed { index, event ->
+            val minutes = UpcomingSchedule.minutesUntil(event, now)
+            val urgent = minutes <= if (event.kind == "exam") 30 else 15
+            setViewVisibility(rows[index], View.VISIBLE)
+            setTextViewText(titles[index], (if (event.kind == "exam") "考试 · " else "") + event.title)
+            setTextViewText(places[index], event.location.ifBlank { "地点待定" })
+            setTextViewText(countdowns[index], minutes.toString() + "分钟后" + if (event.kind == "exam") "考试" else "上课")
+            setTextViewText(times[index], listOf(event.teacher, timeText(event)).filter { it.isNotBlank() }.joinToString(" · "))
+            setViewVisibility(times[index], if (!compact && layout != R.layout.timetable_widget) View.VISIBLE else View.GONE)
+            if (compact) setInt(titles[index], "setMaxLines", if (roomy) 2 else 1)
+            tint(titles[index], "setTextColor", colors.ink, nightColors?.ink)
+            tint(places[index], "setTextColor", colors.ink, nightColors?.ink)
+            tint(countdowns[index], "setTextColor", if (urgent) colors.error else colors.accent,
+                nightColors?.let { if (urgent) it.error else it.accent })
+            tint(times[index], "setTextColor", colors.secondary, nightColors?.secondary)
+            setOnClickPendingIntent(rows[index], open(context, event))
+        }
+        if (selected.size < 2) setViewVisibility(R.id.widget_row_2, View.GONE)
+        setOnClickPendingIntent(R.id.widget_root, open(context, selected.firstOrNull()))
+    }
+
+    private fun open(context: Context, event: ScheduleEvent?): PendingIntent {
         val destination = when {
             event == null -> -1
             event.kind == "exam" -> Constants.ACTIVITY_EXAM
             else -> Constants.SYLLABUS_WIDGET
         }
-        val intent = Intent(context, SplashActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        val intent = Intent(context, SplashActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             .putExtra("from", destination)
-        setOnClickPendingIntent(R.id.widget_root, PendingIntent.getActivity(context,
-            if (event?.kind == "exam") 4303 else 4302, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+        return PendingIntent.getActivity(context, 4400 + destination, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
-    internal fun timeText(event: ScheduleEvent, now: Long, compact: Boolean = false): String {
-        val today = Calendar.getInstance().apply { timeInMillis = now }
-        val date = Calendar.getInstance().apply { timeInMillis = event.start }
-        val tomorrow = (today.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, 1) }
-        fun same(a: Calendar, b: Calendar) = a.get(Calendar.YEAR) == b.get(Calendar.YEAR) &&
-            a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR)
-        val label = when {
-            same(today, date) -> "今天"
-            same(tomorrow, date) -> "明天"
-            else -> SimpleDateFormat(if (compact) "M/d E" else if (today.get(Calendar.YEAR) == date.get(Calendar.YEAR)) "M月d日 E" else "yyyy年M月d日 E", Locale.CHINA).format(Date(event.start))
-        }
+    internal fun timeText(event: ScheduleEvent): String {
         val format = SimpleDateFormat("HH:mm", Locale.CHINA)
-        val end = if (event.end > event.start) "–" + format.format(Date(event.end)) else ""
-        return label + (if (compact) "\n" else " · ") + format.format(Date(event.start)) + end
+        return format.format(Date(event.start)) + if (event.end > event.start) "–" + format.format(Date(event.end)) else ""
     }
 }

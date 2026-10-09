@@ -18,7 +18,7 @@ object ScheduleWidgetStore {
             .distinctBy { it.uid }.sortedBy { it.start }.forEach {
                 array.put(JSONObject().put("id", it.uid).put("title", it.title)
                     .put("location", it.location).put("start", it.start).put("end", it.end)
-                    .put("color", it.color).put("kind", it.kind))
+                    .put("color", it.color).put("kind", it.kind).put("teacher", it.teacher).put("week", it.week))
             }
         prefs(context).edit().putString("account", ScheduleEvents.key(account))
             .putString("events", array.toString()).commit()
@@ -40,7 +40,7 @@ object ScheduleWidgetStore {
         (0 until array.length()).map {
             val obj = array.getJSONObject(it)
             ScheduleEvent(obj.getString("id"), "", obj.getString("title"), obj.getString("location"),
-                "", obj.getLong("start"), obj.getLong("end"), obj.getInt("color"), obj.getString("kind"))
+                "", obj.getLong("start"), obj.getLong("end"), obj.getInt("color"), obj.getString("kind"), teacher = obj.optString("teacher"), week = obj.optInt("week"))
         }
     }.getOrDefault(emptyList())
 }

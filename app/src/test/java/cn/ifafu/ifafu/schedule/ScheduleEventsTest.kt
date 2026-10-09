@@ -29,6 +29,8 @@ class ScheduleEventsTest {
         assertFalse(lessons[0].uid.contains("private-account"))
         assertEquals(lessons[0].uid, ScheduleEvents.courses(listOf(math), date(7), setting) { 1 }[0].uid)
         assertTrue(lessons[0].description.contains("王老师"))
+        assertEquals("王老师", lessons[0].teacher)
+        assertEquals(1, lessons[0].week)
     }
 
     @Test fun invalidPeriodsAreSkippedAndExamsUseThirtyMinuteLead() {
