@@ -8,7 +8,7 @@ import android.appwidget.AppWidgetManager
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.TextView
-import androidx.core.graphics.ColorUtils
+import kotlin.math.pow
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import cn.ifafu.ifafu.R
@@ -25,6 +25,18 @@ import org.junit.runner.RunWith
 class WidgetIntegrationTest {
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val context get() = instrumentation.targetContext
+    // Independent WCAG measurement; do not add production keep rules for a test-only API.
+    private fun contrast(first: Int, second: Int): Double {
+        fun luminance(color: Int): Double {
+            fun channel(shift: Int): Double {
+                val value = ((color ushr shift) and 255) / 255.0
+                return if (value <= 0.04045) value / 12.92 else ((value + 0.055) / 1.055).pow(2.4)
+            }
+            return 0.2126 * channel(16) + 0.7152 * channel(8) + 0.0722 * channel(0)
+        }
+        val a = luminance(first); val b = luminance(second)
+        return (maxOf(a, b) + 0.05) / (minOf(a, b) + 0.05)
+    }
     private fun fixture(kind: String = "course", start: Long = System.currentTimeMillis() + 3600000) =
         ScheduleEvent("widget-test-" + kind, "", "高等数学D（课程信息验证）", "创104", "", start, start + 5700000,
             0xff92d8ce.toInt(), kind)
@@ -47,9 +59,9 @@ class WidgetIntegrationTest {
                 ), listOf(event), now)
                 val dayColors = paletteFor(Configuration.UI_MODE_NIGHT_NO)
                 val nightColors = paletteFor(Configuration.UI_MODE_NIGHT_YES)
-                assertTrue(ColorUtils.calculateContrast(colors.ink, colors.surface) >= 4.5)
-                assertTrue(ColorUtils.calculateContrast(colors.secondary, colors.surface) >= 4.5)
-                assertTrue(ColorUtils.calculateContrast(colors.onContainer, colors.container) >= 4.5)
+                assertTrue(contrast(colors.ink, colors.surface) >= 4.5)
+                assertTrue(contrast(colors.secondary, colors.surface) >= 4.5)
+                assertTrue(contrast(colors.onContainer, colors.container) >= 4.5)
                 for ((layout, size) in listOf(R.layout.widget_schedule_compact to (150 to 150),
                         R.layout.timetable_widget to (280 to 150), R.layout.widget_schedule_large to (280 to 240))) {
                     instrumentation.runOnMainSync {
@@ -131,7 +143,8 @@ class WidgetIntegrationTest {
                 assertNotNull(info)
                 instrumentation.runOnMainSync {
                     val view = host.createView(context, id, info)
-                    assertNotNull(view)
+                    assertNotNull(view.findViewById<TextView>(R.id.widget_title))
+                    assertEquals("下一场考试", view.findViewById<TextView>(R.id.widget_kind).text.toString())
                 }
             }
             SPUtils.getInstance(Constants.SP_USER_INFO).put("account", "another-account", true)
