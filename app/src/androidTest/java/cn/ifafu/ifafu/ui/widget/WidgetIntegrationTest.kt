@@ -62,7 +62,7 @@ class WidgetIntegrationTest {
                 assertTrue(contrast(colors.ink, colors.surface) >= 4.5)
                 assertTrue(contrast(colors.secondary, colors.surface) >= 4.5)
                 assertTrue(contrast(colors.onContainer, colors.container) >= 4.5)
-                for ((layout, size) in listOf(R.layout.widget_schedule_compact to (150 to 150),
+                for ((layout, size) in listOf(R.layout.widget_schedule_compact to (110 to 150), R.layout.widget_schedule_compact to (150 to 150),
                         R.layout.timetable_widget to (280 to 150), R.layout.widget_schedule_large to (280 to 240))) {
                     instrumentation.runOnMainSync {
                         val view = ScheduleWidget.render(themed, layout, event, dayColors, now, nightColors).apply(themed, FrameLayout(themed))
@@ -75,6 +75,8 @@ class WidgetIntegrationTest {
                         assertEquals(event.title, view.findViewById<TextView>(R.id.widget_title).text.toString())
                         val location = view.findViewById<TextView>(R.id.widget_location)
                         assertEquals("创104", location.text.toString())
+                        assertTrue("Location must have a complete visible line", location.height >=
+                            (location.paint.fontMetrics.descent - location.paint.fontMetrics.ascent).toInt())
                         val rect = android.graphics.Rect()
                         location.getDrawingRect(rect)
                         (view as android.view.ViewGroup).offsetDescendantRectToMyCoords(location, rect)
