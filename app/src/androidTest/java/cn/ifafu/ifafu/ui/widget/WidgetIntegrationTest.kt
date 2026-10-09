@@ -79,7 +79,7 @@ class WidgetIntegrationTest {
                             if (layout == R.layout.widget_schedule_large && size.second >= 150) listOf(R.id.widget_time, R.id.widget_time_2) else emptyList()
                         for (id in ids) {
                             val text = view.findViewById<TextView>(id)
-                            assertTrue("Required text must have a complete visible line: " + id,
+                            assertTrue("Required text must have a complete visible line: " + id + " layout=" + layout + " size=" + size + " actual=" + text.height + " metrics=" + text.paint.fontMetrics,
                                 text.height >= (text.paint.fontMetrics.descent - text.paint.fontMetrics.ascent).toInt())
                             val rect = android.graphics.Rect(); text.getDrawingRect(rect)
                             (view as android.view.ViewGroup).offsetDescendantRectToMyCoords(text, rect)
