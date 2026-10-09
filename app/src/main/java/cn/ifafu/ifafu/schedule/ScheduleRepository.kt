@@ -69,9 +69,13 @@ class ScheduleRepository @Inject constructor(
     suspend fun refreshReminders() = withContext(Dispatchers.IO) {
         mutex.withLock {
             val account = db.userDao.getUsingAccount().orEmpty()
+            cn.ifafu.ifafu.ui.widget.ScheduleWidgetStore.clearIfAccountChanged(context, account)
             val terms = db.newCourseDao.getAllCourses(account).map { it.year to it.term }.distinct()
             val events = terms.flatMap { termEvents(it.first, it.second) } +
                 ScheduleEvents.exams(exams.getAllExamsFromLocal("全部", "全部"))
+            ensureActive()
+            if (db.userDao.getUsingAccount().orEmpty() != account) return@withLock
+            cn.ifafu.ifafu.ui.widget.ScheduleWidgetStore.save(context, events, account)
             ReminderScheduler.update(context, events, account)
         }
     }

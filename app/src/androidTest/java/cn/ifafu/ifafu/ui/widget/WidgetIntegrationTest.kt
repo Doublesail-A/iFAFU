@@ -1,0 +1,147 @@
+package cn.ifafu.ifafu.ui.widget
+
+import android.content.ComponentName
+import android.content.Context
+import android.content.res.Configuration
+import android.appwidget.AppWidgetHost
+import android.appwidget.AppWidgetManager
+import android.view.View
+import android.widget.FrameLayout
+import android.widget.TextView
+import androidx.core.graphics.ColorUtils
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import cn.ifafu.ifafu.R
+import cn.ifafu.ifafu.constant.Constants
+import cn.ifafu.ifafu.entity.GlobalSetting
+import cn.ifafu.ifafu.schedule.ScheduleEvent
+import cn.ifafu.ifafu.util.ThemePreferences
+import com.blankj.utilcode.util.SPUtils
+import org.junit.Assert.*
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class WidgetIntegrationTest {
+    private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
+    private val context get() = instrumentation.targetContext
+    private fun fixture(kind: String = "course", start: Long = System.currentTimeMillis() + 3600000) =
+        ScheduleEvent("widget-test-" + kind, "", "高等数学D（课程信息验证）", "创104", "", start, start + 5700000,
+            0xff92d8ce.toInt(), kind)
+
+    @Test fun threeSizesApplyWithReadableLightAndDarkColorsAndNoClippedLocation() {
+        val original = ThemePreferences.getTheme(context)
+        try {
+            ThemePreferences.setTheme(context, GlobalSetting.THEME_COURSE)
+            for (night in listOf(Configuration.UI_MODE_NIGHT_NO, Configuration.UI_MODE_NIGHT_YES)) {
+                val configuration = Configuration(context.resources.configuration).apply {
+                    uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or night
+                    fontScale = 1f
+                }
+                val themed = context.createConfigurationContext(configuration)
+                val event = fixture()
+                val now = System.currentTimeMillis()
+                val colors = ScheduleWidget.palette(themed, listOf(event), now)
+                fun paletteFor(mode: Int) = ScheduleWidget.palette(context.createConfigurationContext(
+                    Configuration(configuration).apply { uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or mode }
+                ), listOf(event), now)
+                val dayColors = paletteFor(Configuration.UI_MODE_NIGHT_NO)
+                val nightColors = paletteFor(Configuration.UI_MODE_NIGHT_YES)
+                assertTrue(ColorUtils.calculateContrast(colors.ink, colors.surface) >= 4.5)
+                assertTrue(ColorUtils.calculateContrast(colors.secondary, colors.surface) >= 4.5)
+                assertTrue(ColorUtils.calculateContrast(colors.onContainer, colors.container) >= 4.5)
+                for ((layout, size) in listOf(R.layout.widget_schedule_compact to (150 to 150),
+                        R.layout.timetable_widget to (280 to 150), R.layout.widget_schedule_large to (280 to 240))) {
+                    instrumentation.runOnMainSync {
+                        val view = ScheduleWidget.render(themed, layout, event, dayColors, now, nightColors).apply(themed, FrameLayout(themed))
+                        val density = themed.resources.displayMetrics.density
+                        val width = (size.first * density).toInt()
+                        val height = (size.second * density).toInt()
+                        view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                            View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
+                        view.layout(0, 0, width, height)
+                        assertEquals(event.title, view.findViewById<TextView>(R.id.widget_title).text.toString())
+                        val location = view.findViewById<TextView>(R.id.widget_location)
+                        assertEquals("创104", location.text.toString())
+                        val rect = android.graphics.Rect()
+                        location.getDrawingRect(rect)
+                        (view as android.view.ViewGroup).offsetDescendantRectToMyCoords(location, rect)
+                        assertTrue("Location exceeds widget bounds: " + rect + " height=" + height, rect.bottom <= height)
+                        assertEquals(colors.ink, view.findViewById<TextView>(R.id.widget_title).currentTextColor)
+                        assertTrue(view.findViewById<TextView>(R.id.widget_time).text.toString().contains("–"))
+                        val bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
+                        view.draw(android.graphics.Canvas(bitmap))
+                        val file = java.io.File(context.getExternalFilesDir(null), "widget-" + layout + "-" + night + ".png")
+                        file.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+                        bitmap.recycle()
+                    }
+                }
+                instrumentation.runOnMainSync {
+                    val exam = fixture("exam").copy(end = 0)
+                    val view = ScheduleWidget.render(themed, R.layout.timetable_widget, exam, colors, now).apply(themed, FrameLayout(themed))
+                    assertEquals("下一场考试", view.findViewById<TextView>(R.id.widget_kind).text.toString())
+                    assertFalse(view.findViewById<TextView>(R.id.widget_time).text.toString().contains("–"))
+                    val empty = ScheduleWidget.render(themed, R.layout.widget_schedule_compact, null, colors, now).apply(themed, FrameLayout(themed))
+                    assertEquals("暂无后续安排", empty.findViewById<TextView>(R.id.widget_title).text.toString())
+                }
+            }
+        } finally { ThemePreferences.setTheme(context, original) }
+    }
+
+    @Test fun prepareColdWidget() {
+        org.junit.Assume.assumeTrue(InstrumentationRegistry.getArguments().getString("widgetColdStart") == "true")
+        val account = "widget-test-account"
+        SPUtils.getInstance(Constants.SP_USER_INFO).put("account", account, true)
+        val host = AppWidgetHost(context, 9272)
+        val id = host.allocateAppWidgetId()
+        context.getSharedPreferences("widget_test", Context.MODE_PRIVATE).edit().putInt("host_id", id).commit()
+        assertTrue(AppWidgetManager.getInstance(context).bindAppWidgetIdIfAllowed(id, ComponentName(context, SyllabusWidget::class.java)))
+        val now = System.currentTimeMillis()
+        ScheduleWidgetStore.save(context, listOf(fixture(start = now + 30000), fixture("exam", now + 1800000)), account)
+    }
+
+    @Test fun cleanColdWidget() {
+        org.junit.Assume.assumeTrue(InstrumentationRegistry.getArguments().getString("widgetColdCleanup") == "true")
+        val id = context.getSharedPreferences("widget_test", Context.MODE_PRIVATE).getInt("host_id", -1)
+        if (id >= 0) AppWidgetHost(context, 9272).deleteAppWidgetId(id)
+        context.getSharedPreferences("widget_test", Context.MODE_PRIVATE).edit().clear().commit()
+        SPUtils.getInstance(Constants.SP_USER_INFO).put("account", "", true)
+        ScheduleWidgetStore.clearIfAccountChanged(context, "")
+    }
+
+    @Test fun installedProvidersBindAndCacheIsIndependentOfRemindersAndAccounts() {
+        org.junit.Assume.assumeTrue(InstrumentationRegistry.getArguments().getString("isolatedWidgetTest") == "true")
+        val account = "widget-test-account"
+        SPUtils.getInstance(Constants.SP_USER_INFO).put("account", account, true)
+        val host = AppWidgetHost(context, 9271)
+        val manager = AppWidgetManager.getInstance(context)
+        val ids = mutableListOf<Int>()
+        try {
+            for (provider in listOf(SyllabusWidget::class.java, CompactScheduleWidget::class.java, LargeScheduleWidget::class.java)) {
+                val id = host.allocateAppWidgetId(); ids.add(id)
+                assertTrue("Test launcher needs appwidget grantbind", manager.bindAppWidgetIdIfAllowed(id, ComponentName(context, provider)))
+            }
+            val events = listOf(fixture(), fixture("exam", System.currentTimeMillis() + 1800000))
+            ScheduleWidgetStore.save(context, events, account)
+            assertEquals("exam", UpcomingSchedule.next(ScheduleWidgetStore.load(context), System.currentTimeMillis())?.kind)
+            // Native RemoteViews are pushed to every registered provider, without enabling notifications.
+            ScheduleWidget.updateAll(context)
+            for (id in ids) {
+                val info = manager.getAppWidgetInfo(id)
+                assertNotNull(info)
+                instrumentation.runOnMainSync {
+                    val view = host.createView(context, id, info)
+                    assertNotNull(view)
+                }
+            }
+            SPUtils.getInstance(Constants.SP_USER_INFO).put("account", "another-account", true)
+            assertTrue(ScheduleWidgetStore.load(context).isEmpty())
+            ScheduleWidgetStore.clearIfAccountChanged(context, "another-account")
+            assertTrue(ScheduleWidgetStore.load(context).isEmpty())
+        } finally {
+            ids.forEach { host.deleteAppWidgetId(it) }
+            SPUtils.getInstance(Constants.SP_USER_INFO).put("account", "", true)
+            ScheduleWidgetStore.clearIfAccountChanged(context, "")
+        }
+    }
+}

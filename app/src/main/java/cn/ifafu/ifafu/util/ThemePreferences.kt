@@ -43,6 +43,7 @@ object ThemePreferences {
             .edit()
             .putInt(KEY_MODE, value)
             .apply()
+        cn.ifafu.ifafu.ui.widget.ScheduleWidget.requestUpdate(context)
     }
 
     fun label(theme: Int): String {
@@ -61,6 +62,7 @@ object ThemePreferences {
     fun setWallpaperSeed(context: Context, seed: Int) {
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putInt(KEY_WALLPAPER_SEED, seed).apply()
+        cn.ifafu.ifafu.ui.widget.ScheduleWidget.requestUpdate(context)
     }
 
     /** Returns true only when a new seed was persisted. */
@@ -70,6 +72,7 @@ object ThemePreferences {
             .edit()
             .putInt(KEY_COURSE_SEED, seed)
             .apply()
+        cn.ifafu.ifafu.ui.widget.ScheduleWidget.requestUpdate(context)
         return true
     }
 }

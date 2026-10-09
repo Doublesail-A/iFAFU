@@ -32,8 +32,8 @@ android {
         minSdk 21
         targetSdk 33
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        versionCode 310
-        versionName "1.0.1"
+        versionCode 311
+        versionName "1.0.2"
         resConfigs "zh"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
