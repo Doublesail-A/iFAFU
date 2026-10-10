@@ -73,6 +73,8 @@ class WidgetIntegrationTest {
                         view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
                             View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
                         view.layout(0, 0, width, height)
+                        // Complete TextView pre-draw scrolling, as a launcher does before presenting its frame.
+                        view.viewTreeObserver.dispatchOnPreDraw()
                         assertEquals(course.title, view.findViewById<TextView>(R.id.widget_title).text.toString())
                         val ids = (if (layout == R.layout.timetable_widget) listOf(R.id.widget_location, R.id.widget_countdown)
                             else listOf(R.id.widget_location, R.id.widget_countdown, R.id.widget_location_2, R.id.widget_countdown_2)) +
@@ -98,6 +100,8 @@ class WidgetIntegrationTest {
                         assertEquals(View.VISIBLE, view.findViewById<View>(R.id.widget_time).visibility)
                         val countdown = view.findViewById<TextView>(R.id.widget_countdown)
                         assertEquals(android.view.Gravity.CENTER, countdown.gravity)
+                        assertEquals("Countdown line count must match its presentation", if (layout == R.layout.widget_schedule_compact) 1 else 2, countdown.layout.lineCount)
+                        assertTrue("All countdown lines must be visible: " + countdown.layout.height + "/" + countdown.height, countdown.layout.height <= countdown.height)
                         assertEquals(colors.onErrorContainer, countdown.currentTextColor)
                         assertTrue(contrast(colors.onErrorContainer, colors.errorContainer) >= 4.5)
                         assertTrue(contrast(colors.onContainer, colors.container) >= 4.5)
@@ -113,6 +117,20 @@ class WidgetIntegrationTest {
                         view.draw(android.graphics.Canvas(bitmap))
                         java.io.File(context.getExternalFilesDir(null), "today-widget-" + layout + "-" + size.second + "-" + night + ".png")
                             .outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+                        val glyphRect = android.graphics.Rect(); countdown.getDrawingRect(glyphRect)
+                        (view as android.view.ViewGroup).offsetDescendantRectToMyCoords(countdown, glyphRect)
+                        val isolatedText = android.graphics.Bitmap.createBitmap(countdown.width, countdown.height, android.graphics.Bitmap.Config.ARGB_8888)
+                        countdown.draw(android.graphics.Canvas(isolatedText))
+                        java.io.File(context.getExternalFilesDir(null), "countdown-isolated.png").outputStream().use { isolatedText.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+                        isolatedText.recycle()
+                        var glyphPixels = 0
+                        for (y in glyphRect.top.coerceAtLeast(0) until glyphRect.bottom.coerceAtMost(height))
+                            for (x in glyphRect.left.coerceAtLeast(0) until glyphRect.right.coerceAtMost(width))
+                                if (bitmap.getPixel(x, y) == countdown.currentTextColor) glyphPixels++
+                        assertTrue("Countdown must paint visible glyphs. rect=" + glyphRect + " baseline=" + countdown.baseline +
+                            " padding=" + listOf(countdown.paddingLeft,countdown.paddingTop,countdown.paddingRight,countdown.paddingBottom) +
+                            " layoutWidth=" + countdown.layout.width + " lineLeft=" + countdown.layout.getLineLeft(0) + " lineWidth=" + countdown.layout.getLineWidth(0) + " layoutText=" + countdown.layout.text + " scroll=" + countdown.scrollX + "/" + countdown.scrollY + " lineBaseline=" + countdown.layout.getLineBaseline(0) + " paint=" + countdown.paint.color + " color=" + countdown.currentTextColor +
+                            " text=" + countdown.text + " pixels=" + glyphPixels, glyphPixels > 5)
                         bitmap.recycle()
                     }
                 }
