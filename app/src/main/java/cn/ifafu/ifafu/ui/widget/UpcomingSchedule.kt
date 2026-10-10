@@ -22,6 +22,16 @@ object UpcomingSchedule {
     }
     fun minutesUntil(event: ScheduleEvent, now: Long): Long = maxOf(0, (event.start - now + 59999) / 60000)
 
+    fun countdownText(minutes: Long, kind: String, multiline: Boolean = false): String {
+        val action = if (kind == "exam") "考试" else "上课"
+        if (minutes <= 0) return "即将$action"
+        val duration = if (minutes < 60) "${minutes}分钟" else buildString {
+            append("${minutes / 60}小时")
+            if (minutes % 60 != 0L) append("${minutes % 60}分")
+        }
+        return duration + (if (multiline) "\n" else "") + "后" + action
+    }
+
     /** Update the minute labels while there is a today's event; otherwise wait for the date change. */
     fun nextRefresh(events: List<ScheduleEvent>, now: Long): Long =
         today(events, now).map { now + (it.start - now - 1) % 60000 + 1 }

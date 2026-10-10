@@ -52,7 +52,7 @@ class WidgetIntegrationTest {
                 val themed = context.createConfigurationContext(configuration)
                 val now = java.util.Calendar.getInstance().apply { clear(); set(2026, 9, 9, 8, 0) }.timeInMillis
                 val course = fixture(start = now + 12 * 60000).copy(teacher = "林老师", week = 6)
-                val exam = fixture("exam", now + 2 * 3600000).copy(title = "普通化学", location = "考场201")
+                val exam = fixture("exam", now + 141 * 60000).copy(title = "普通化学", location = "考场201")
                 val events = listOf(course, exam)
                 val colors = ScheduleWidget.palette(themed, events, now)
                 fun paletteFor(mode: Int) = ScheduleWidget.palette(context.createConfigurationContext(
@@ -76,7 +76,7 @@ class WidgetIntegrationTest {
                         assertEquals(course.title, view.findViewById<TextView>(R.id.widget_title).text.toString())
                         val ids = (if (layout == R.layout.timetable_widget) listOf(R.id.widget_location, R.id.widget_countdown)
                             else listOf(R.id.widget_location, R.id.widget_countdown, R.id.widget_location_2, R.id.widget_countdown_2)) +
-                            if (layout == R.layout.widget_schedule_large && size.second >= 150) listOf(R.id.widget_time, R.id.widget_time_2) else emptyList()
+                            if (layout == R.layout.timetable_widget) listOf(R.id.widget_time) else listOf(R.id.widget_time, R.id.widget_time_2)
                         for (id in ids) {
                             val text = view.findViewById<TextView>(id)
                             assertTrue("Required text must have a complete visible line: " + id + " layout=" + layout + " size=" + size + " actual=" + text.height + " metrics=" + text.paint.fontMetrics,
@@ -85,16 +85,29 @@ class WidgetIntegrationTest {
                             (view as android.view.ViewGroup).offsetDescendantRectToMyCoords(text, rect)
                             assertTrue("Text exceeds widget bounds: " + rect + " height=" + height, rect.bottom <= height)
                             assertEquals("Required text cannot be ellipsized: " + text.text, 0, text.layout.getEllipsisCount(0))
+                            for (line in 0 until text.layout.lineCount) assertTrue("Text line must fit: " + text.text,
+                                text.layout.getLineWidth(line) <= text.width - text.compoundPaddingLeft - text.compoundPaddingRight + 1)
                         }
-                        assertEquals("12分钟后上课", view.findViewById<TextView>(R.id.widget_countdown).text.toString())
+                        assertEquals(UpcomingSchedule.countdownText(12, "course", layout != R.layout.widget_schedule_compact), view.findViewById<TextView>(R.id.widget_countdown).text.toString())
                         assertEquals(colors.ink, view.findViewById<TextView>(R.id.widget_title).currentTextColor)
                         if (layout != R.layout.timetable_widget) {
                             assertEquals("考试 · 普通化学", view.findViewById<TextView>(R.id.widget_title_2).text.toString())
-                            assertEquals("120分钟后考试", view.findViewById<TextView>(R.id.widget_countdown_2).text.toString())
+                            assertEquals(UpcomingSchedule.countdownText(141, "exam", layout != R.layout.widget_schedule_compact), view.findViewById<TextView>(R.id.widget_countdown_2).text.toString())
                         } else assertEquals(View.GONE, view.findViewById<View>(R.id.widget_row_2).visibility)
-                        if (layout == R.layout.widget_schedule_large && size.second >= 150) {
-                            assertTrue(view.findViewById<TextView>(R.id.widget_time).text.toString().contains("林老师"))
-                            assertEquals(View.VISIBLE, view.findViewById<View>(R.id.widget_time).visibility)
+                        assertTrue(view.findViewById<TextView>(R.id.widget_location).text.toString().contains("林老师"))
+                        assertEquals(View.VISIBLE, view.findViewById<View>(R.id.widget_time).visibility)
+                        val countdown = view.findViewById<TextView>(R.id.widget_countdown)
+                        assertEquals(android.view.Gravity.CENTER, countdown.gravity)
+                        assertEquals(colors.onErrorContainer, countdown.currentTextColor)
+                        assertTrue(contrast(colors.onErrorContainer, colors.errorContainer) >= 4.5)
+                        assertTrue(contrast(colors.onContainer, colors.container) >= 4.5)
+                        if (layout != R.layout.widget_schedule_compact) {
+                            val badgeRect = android.graphics.Rect(); countdown.getDrawingRect(badgeRect)
+                            (view as android.view.ViewGroup).offsetDescendantRectToMyCoords(countdown, badgeRect)
+                            val row = view.findViewById<View>(R.id.widget_row_1)
+                            val rowRect = android.graphics.Rect(); row.getDrawingRect(rowRect)
+                            view.offsetDescendantRectToMyCoords(row, rowRect)
+                            assertTrue("Badge must be vertically centered in the course card", kotlin.math.abs(rowRect.exactCenterY() - badgeRect.exactCenterY()) <= 1f)
                         }
                         val bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
                         view.draw(android.graphics.Canvas(bitmap))

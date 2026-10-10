@@ -92,7 +92,7 @@ object ScheduleWidget {
     }
 
     data class Colors(val surface: Int, val ink: Int, val secondary: Int, val accent: Int,
-        val container: Int, val onContainer: Int, val error: Int)
+        val container: Int, val onContainer: Int, val error: Int, val errorContainer: Int, val onErrorContainer: Int, val card: Int)
 
     @SuppressLint("RestrictedApi")
     internal fun palette(context: Context, events: List<ScheduleEvent>, now: Long): Colors {
@@ -100,13 +100,16 @@ object ScheduleWidget {
         if (mode == GlobalSetting.THEME_SYSTEM || Build.VERSION.SDK_INT < 31) {
             val themed = DynamicColors.wrapContextIfAvailable(ContextThemeWrapper(context, R.style.AppTheme))
             fun color(attr: Int) = MaterialColors.getColor(themed, attr, "desktop widget")
-            return Colors(color(com.google.android.material.R.attr.colorSurface),
+            return Colors(color(com.google.android.material.R.attr.colorSurfaceVariant),
                 color(com.google.android.material.R.attr.colorOnSurface),
                 color(com.google.android.material.R.attr.colorOnSurfaceVariant),
                 color(com.google.android.material.R.attr.colorPrimary),
-                color(com.google.android.material.R.attr.colorPrimaryContainer),
-                color(com.google.android.material.R.attr.colorOnPrimaryContainer),
-                color(com.google.android.material.R.attr.colorError))
+                color(com.google.android.material.R.attr.colorSecondaryContainer),
+                color(com.google.android.material.R.attr.colorOnSecondaryContainer),
+                color(com.google.android.material.R.attr.colorError),
+                color(com.google.android.material.R.attr.colorErrorContainer),
+                color(com.google.android.material.R.attr.colorOnErrorContainer),
+                color(com.google.android.material.R.attr.colorSurface))
         }
         val seed = if (mode == GlobalSetting.THEME_WALLPAPER) ThemePreferences.getWallpaperSeed(context)
             else UpcomingSchedule.next(events.filter { it.kind == "course" }, now)?.color
@@ -114,10 +117,11 @@ object ScheduleWidget {
         val dark = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
         val scheme = SchemeTonalSpot(Hct.fromInt(seed), dark, 0.0)
         val roles = MaterialDynamicColors()
-        return Colors(roles.surface().getArgb(scheme), roles.onSurface().getArgb(scheme),
+        return Colors(roles.surfaceContainerLow().getArgb(scheme), roles.onSurface().getArgb(scheme),
             roles.onSurfaceVariant().getArgb(scheme), roles.primary().getArgb(scheme),
-            roles.primaryContainer().getArgb(scheme), roles.onPrimaryContainer().getArgb(scheme),
-            roles.error().getArgb(scheme))
+            roles.secondaryContainer().getArgb(scheme), roles.onSecondaryContainer().getArgb(scheme),
+            roles.error().getArgb(scheme), roles.errorContainer().getArgb(scheme),
+            roles.onErrorContainer().getArgb(scheme), roles.surface().getArgb(scheme))
     }
 
     internal fun render(context: Context, layout: Int, events: List<ScheduleEvent>, colors: Colors,
@@ -133,6 +137,8 @@ object ScheduleWidget {
         val places = intArrayOf(R.id.widget_location, R.id.widget_location_2)
         val countdowns = intArrayOf(R.id.widget_countdown, R.id.widget_countdown_2)
         val times = intArrayOf(R.id.widget_time, R.id.widget_time_2)
+        val cards = intArrayOf(R.id.widget_card, R.id.widget_card_2)
+        val badges = intArrayOf(R.id.widget_badge, R.id.widget_badge_2)
         val rows = intArrayOf(R.id.widget_row_1, R.id.widget_row_2)
         val compact = layout == R.layout.widget_schedule_compact
         val selected = UpcomingSchedule.today(events, now).take(if (layout == R.layout.timetable_widget) 1 else 2)
@@ -144,15 +150,18 @@ object ScheduleWidget {
             val urgent = minutes <= if (event.kind == "exam") 30 else 15
             setViewVisibility(rows[index], View.VISIBLE)
             setTextViewText(titles[index], (if (event.kind == "exam") "考试 · " else "") + event.title)
-            setTextViewText(places[index], event.location.ifBlank { "地点待定" })
-            setTextViewText(countdowns[index], minutes.toString() + "分钟后" + if (event.kind == "exam") "考试" else "上课")
-            setTextViewText(times[index], listOf(event.teacher, timeText(event)).filter { it.isNotBlank() }.joinToString(" · "))
-            setViewVisibility(times[index], if (roomy && !compact && layout != R.layout.timetable_widget) View.VISIBLE else View.GONE)
+            setTextViewText(places[index], listOf(event.location.ifBlank { "地点待定" }, event.teacher).filter { it.isNotBlank() }.joinToString(" · "))
+            setTextViewText(countdowns[index], UpcomingSchedule.countdownText(minutes, event.kind, multiline = !compact))
+            setTextViewText(times[index], timeText(event))
+            setViewVisibility(times[index], View.VISIBLE)
             if (compact) setInt(titles[index], "setMaxLines", if (roomy) 2 else 1)
+            tint(cards[index], "setColorFilter", colors.card, nightColors?.card)
+            tint(badges[index], "setColorFilter", if (urgent) colors.errorContainer else colors.container,
+                nightColors?.let { if (urgent) it.errorContainer else it.container })
             tint(titles[index], "setTextColor", colors.ink, nightColors?.ink)
             tint(places[index], "setTextColor", colors.ink, nightColors?.ink)
-            tint(countdowns[index], "setTextColor", if (urgent) colors.error else colors.accent,
-                nightColors?.let { if (urgent) it.error else it.accent })
+            tint(countdowns[index], "setTextColor", if (urgent) colors.onErrorContainer else colors.onContainer,
+                nightColors?.let { if (urgent) it.onErrorContainer else it.onContainer })
             tint(times[index], "setTextColor", colors.secondary, nightColors?.secondary)
             setOnClickPendingIntent(rows[index], open(context, event))
         }

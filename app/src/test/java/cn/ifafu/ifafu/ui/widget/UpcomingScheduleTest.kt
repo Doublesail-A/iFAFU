@@ -36,6 +36,13 @@ class UpcomingScheduleTest {
         assertEquals("exam", UpcomingSchedule.today(events, now).first().uid)
         assertEquals(UpcomingSchedule.today(events, now), UpcomingSchedule.today(events.reversed(), now))
     }
+    @Test fun durationUsesHoursAndMinutesAndPreservesExamLabels() {
+        assertEquals("31分钟后上课", UpcomingSchedule.countdownText(31, "course"))
+        assertEquals("1小时47分后上课", UpcomingSchedule.countdownText(107, "course"))
+        assertEquals("2小时后考试", UpcomingSchedule.countdownText(120, "exam"))
+        assertEquals("2小时21分\n后上课", UpcomingSchedule.countdownText(141, "course", true))
+        assertEquals("即将上课", UpcomingSchedule.countdownText(0, "course"))
+    }
     @Test fun countdownRoundsUpAndRefreshesAtTheNextLabelChange() {
         val now = time(9, 12)
         val events = listOf(event("lesson", now + 61001))
