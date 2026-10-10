@@ -59,6 +59,7 @@ object ScheduleWidget {
         ids.forEach { id ->
             val views = if (Build.VERSION.SDK_INT >= 31) RemoteViews(mapOf(
                 SizeF(250f, 60f) to render(context, R.layout.timetable_widget, today, light, now, dark),
+                SizeF(250f, 80f) to render(context, R.layout.timetable_widget, today, light, now, dark, roomy = true),
                 SizeF(110f, 140f) to render(context, R.layout.widget_schedule_compact, today, light, now, dark),
                 SizeF(110f, 180f) to render(context, R.layout.widget_schedule_compact, today, light, now, dark, roomy = true),
                 SizeF(250f, 120f) to render(context, R.layout.widget_schedule_large, today, light, now, dark),
@@ -67,7 +68,7 @@ object ScheduleWidget {
                 val options = manager.getAppWidgetOptions(id)
                 val width = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 250)
                 val height = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 60)
-                render(context, layoutFor(width, height), today, colors, now, roomy = height >= if (width >= 250) 150 else 180)
+                render(context, layoutFor(width, height), today, colors, now, roomy = if (width >= 250) height >= if (height < 120) 80 else 150 else height >= 180)
             }
             manager.updateAppWidget(id, views)
         }
@@ -155,6 +156,11 @@ object ScheduleWidget {
             setTextViewText(times[index], timeText(event))
             setViewVisibility(times[index], View.VISIBLE)
             if (compact) setInt(titles[index], "setMaxLines", if (roomy) 2 else 1)
+            if (!compact && roomy) {
+                setTextViewTextSize(titles[index], android.util.TypedValue.COMPLEX_UNIT_SP, 16f)
+                setTextViewTextSize(places[index], android.util.TypedValue.COMPLEX_UNIT_SP, 12f)
+                setTextViewTextSize(times[index], android.util.TypedValue.COMPLEX_UNIT_SP, 11f)
+            }
             tint(cards[index], "setColorFilter", colors.card, nightColors?.card)
             tint(badges[index], "setColorFilter", if (urgent) colors.errorContainer else colors.container,
                 nightColors?.let { if (urgent) it.errorContainer else it.container })
