@@ -50,9 +50,9 @@ class WidgetIntegrationTest {
                     uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or night; fontScale = 1f
                 }
                 val themed = context.createConfigurationContext(configuration)
-                val now = java.util.Calendar.getInstance().apply { clear(); set(2026, 9, 9, 8, 0) }.timeInMillis
+                val now = java.util.Calendar.getInstance().apply { clear(); set(2026, 9, 9, 0, 0) }.timeInMillis
                 val course = fixture(start = now + 12 * 60000).copy(teacher = "林老师", week = 6)
-                val exam = fixture("exam", now + 141 * 60000).copy(title = "普通化学", location = "考场201")
+                val exam = fixture("exam", now + 1400 * 60000).copy(title = "普通化学", location = "考场201")
                 val events = listOf(course, exam)
                 val colors = ScheduleWidget.palette(themed, events, now)
                 fun paletteFor(mode: Int) = ScheduleWidget.palette(context.createConfigurationContext(
@@ -94,7 +94,7 @@ class WidgetIntegrationTest {
                         assertEquals(colors.ink, view.findViewById<TextView>(R.id.widget_title).currentTextColor)
                         if (layout != R.layout.timetable_widget) {
                             assertEquals("考试 · 普通化学", view.findViewById<TextView>(R.id.widget_title_2).text.toString())
-                            assertEquals(UpcomingSchedule.countdownText(141, "exam"), view.findViewById<TextView>(R.id.widget_countdown_2).text.toString())
+                            assertEquals(UpcomingSchedule.countdownText(1400, "exam"), view.findViewById<TextView>(R.id.widget_countdown_2).text.toString())
                         } else assertEquals(View.GONE, view.findViewById<View>(R.id.widget_row_2).visibility)
                         assertTrue(view.findViewById<TextView>(R.id.widget_location).text.toString().contains("林老师"))
                         assertEquals(View.VISIBLE, view.findViewById<View>(R.id.widget_time).visibility)
@@ -117,20 +117,18 @@ class WidgetIntegrationTest {
                         view.draw(android.graphics.Canvas(bitmap))
                         java.io.File(context.getExternalFilesDir(null), "today-widget-" + layout + "-" + size.second + "-" + night + ".png")
                             .outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
-                        val glyphRect = android.graphics.Rect(); countdown.getDrawingRect(glyphRect)
-                        (view as android.view.ViewGroup).offsetDescendantRectToMyCoords(countdown, glyphRect)
-                        val isolatedText = android.graphics.Bitmap.createBitmap(countdown.width, countdown.height, android.graphics.Bitmap.Config.ARGB_8888)
-                        countdown.draw(android.graphics.Canvas(isolatedText))
-                        java.io.File(context.getExternalFilesDir(null), "countdown-isolated.png").outputStream().use { isolatedText.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
-                        isolatedText.recycle()
-                        var glyphPixels = 0
-                        for (y in glyphRect.top.coerceAtLeast(0) until glyphRect.bottom.coerceAtMost(height))
-                            for (x in glyphRect.left.coerceAtLeast(0) until glyphRect.right.coerceAtMost(width))
-                                if (bitmap.getPixel(x, y) == countdown.currentTextColor) glyphPixels++
-                        assertTrue("Countdown must paint visible glyphs. rect=" + glyphRect + " baseline=" + countdown.baseline +
-                            " padding=" + listOf(countdown.paddingLeft,countdown.paddingTop,countdown.paddingRight,countdown.paddingBottom) +
-                            " layoutWidth=" + countdown.layout.width + " lineLeft=" + countdown.layout.getLineLeft(0) + " lineWidth=" + countdown.layout.getLineWidth(0) + " layoutText=" + countdown.layout.text + " scroll=" + countdown.scrollX + "/" + countdown.scrollY + " lineBaseline=" + countdown.layout.getLineBaseline(0) + " paint=" + countdown.paint.color + " color=" + countdown.currentTextColor +
-                            " text=" + countdown.text + " pixels=" + glyphPixels, glyphPixels > 5)
+                        for (glyphId in if (layout == R.layout.timetable_widget) listOf(R.id.widget_countdown)
+                            else listOf(R.id.widget_countdown, R.id.widget_countdown_2)) {
+                            val label = view.findViewById<TextView>(glyphId)
+                            assertEquals("Every badge must remain one line", 1, label.layout.lineCount)
+                            val rect = android.graphics.Rect(); label.getDrawingRect(rect)
+                            (view as android.view.ViewGroup).offsetDescendantRectToMyCoords(label, rect)
+                            var pixels = 0
+                            for (y in rect.top.coerceAtLeast(0) until rect.bottom.coerceAtMost(height))
+                                for (x in rect.left.coerceAtLeast(0) until rect.right.coerceAtMost(width))
+                                    if (bitmap.getPixel(x, y) == label.currentTextColor) pixels++
+                            assertTrue("Badge must draw visible glyphs: " + label.text, pixels > 5)
+                        }
                         bitmap.recycle()
                     }
                 }
@@ -218,6 +216,23 @@ class WidgetIntegrationTest {
         ScheduleWidgetStore.save(context, listOf(fixture(start = now + 30000), fixture("exam", now + 1800000)), account)
     }
 
+    @Test fun verifyColdWidgetShowsRecentCourseAfterWake() {
+        org.junit.Assume.assumeTrue(InstrumentationRegistry.getArguments().getString("widgetColdVerify") == "true")
+        assertTrue(ScheduleWidget.interactive(context))
+        val id = context.getSharedPreferences("widget_test", Context.MODE_PRIVATE).getInt("host_id", -1)
+        assertTrue(id >= 0)
+        val host = AppWidgetHost(context, 9272)
+        val manager = AppWidgetManager.getInstance(context)
+        try {
+            instrumentation.runOnMainSync {
+                host.startListening()
+                val view = host.createView(context, id, manager.getAppWidgetInfo(id))
+                assertTrue("Waking must show the already-started course without opening the app",
+                    view.findViewById<TextView>(R.id.widget_countdown).text.toString().startsWith("已上课"))
+            }
+        } finally { instrumentation.runOnMainSync { host.stopListening() } }
+    }
+
     @Test fun cleanColdWidget() {
         org.junit.Assume.assumeTrue(InstrumentationRegistry.getArguments().getString("widgetColdCleanup") == "true")
         val id = context.getSharedPreferences("widget_test", Context.MODE_PRIVATE).getInt("host_id", -1)
@@ -248,6 +263,7 @@ class WidgetIntegrationTest {
             for (id in ids) {
                 val info = manager.getAppWidgetInfo(id)
                 assertNotNull(info)
+                assertEquals("System periodic wakeups must be disabled", 0, info.updatePeriodMillis)
                 instrumentation.runOnMainSync {
                     val view = host.createView(context, id, info)
                     assertNotNull(view.findViewById<TextView>(R.id.widget_title))
