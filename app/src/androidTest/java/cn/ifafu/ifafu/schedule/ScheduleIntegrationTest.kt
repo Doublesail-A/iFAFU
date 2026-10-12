@@ -91,14 +91,16 @@ class ScheduleIntegrationTest {
     }
 
     @Test fun systemAlarmDeliversCourseAndExamNotificationsWithDetails() {
+        org.junit.Assume.assumeTrue("Requires an isolated notification test device",
+            InstrumentationRegistry.getArguments().getString("isolatedNotificationTest") == "true")
         val accountStore = SPUtils.getInstance(Constants.SP_USER_INFO)
         val previous = accountStore.getString("account", "")
         val courseEnabled = ReminderScheduler.enabled(context, "course")
         val examEnabled = ReminderScheduler.enabled(context, "exam")
         Thread.sleep(1500) // Initial application's database refresh has finished.
         val now = System.currentTimeMillis()
-        val course = ScheduleEvent("integration-course", "test", "通知验证 · 数学", "创104", "", now + 15 * 60000 + 3500, now + 16 * 60000, 1)
-        val exam = course.copy(uid = "integration-exam", title = "通知验证 · 考试", kind = "exam",
+        val course = ScheduleEvent("integration-course-" + now, "test", "通知验证 · 数学", "创104", "", now + 15 * 60000 + 3500, now + 16 * 60000, 1)
+        val exam = course.copy(uid = "integration-exam-" + now, title = "通知验证 · 考试", kind = "exam",
             start = now + 30 * 60000 + 3500, end = now + 31 * 60000, location = "考场201", description = "座位：23")
         try {
             accountStore.put("account", "integration-test")
@@ -114,7 +116,7 @@ class ScheduleIntegrationTest {
             assertTrue(details.any { it.contains("考试") && it.contains("考场201") && it.contains("23") })
         } finally {
             val manager = context.getSystemService(NotificationManager::class.java)
-            manager.cancel("integration-course".hashCode()); manager.cancel("integration-exam".hashCode())
+            manager.cancel(course.uid.hashCode()); manager.cancel(exam.uid.hashCode())
             accountStore.put("account", previous)
             ReminderScheduler.update(context, emptyList(), previous)
             ReminderScheduler.setEnabled(context, "course", courseEnabled)

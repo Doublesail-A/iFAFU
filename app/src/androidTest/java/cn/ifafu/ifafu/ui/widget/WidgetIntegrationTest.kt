@@ -143,6 +143,35 @@ class WidgetIntegrationTest {
         } finally { ThemePreferences.setTheme(context, original) }
     }
 
+    @Test fun singleWidgetShowsLongAndStartedLabelsOnOneLine() {
+        val midnight = java.util.Calendar.getInstance().apply { clear(); set(2026, 9, 9, 0, 0) }.timeInMillis
+        val noon = midnight + 12 * 3600000
+        val scenarios = listOf(Triple(midnight, fixture(start = midnight + 1400 * 60000), "23小时20分后"),
+            Triple(noon, fixture(start = noon - 599000), "已上课9分钟"))
+        for ((now, course, expected) in scenarios) instrumentation.runOnMainSync {
+            val colors = ScheduleWidget.palette(context, listOf(course), now)
+            val view = ScheduleWidget.render(context, R.layout.timetable_widget, listOf(course), colors, now)
+                .apply(context, FrameLayout(context))
+            val density = context.resources.displayMetrics.density
+            val width = (280 * density).toInt(); val height = (60 * density).toInt()
+            view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
+            view.layout(0, 0, width, height); view.viewTreeObserver.dispatchOnPreDraw()
+            val label = view.findViewById<TextView>(R.id.widget_countdown)
+            assertEquals(expected, label.text.toString())
+            assertEquals(1, label.layout.lineCount); assertEquals(0, label.layout.getEllipsisCount(0))
+            assertEquals(colors.onContainer, label.currentTextColor)
+            val bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
+            view.draw(android.graphics.Canvas(bitmap))
+            val rect = android.graphics.Rect(); label.getDrawingRect(rect)
+            (view as android.view.ViewGroup).offsetDescendantRectToMyCoords(label, rect)
+            var pixels = 0
+            for (y in rect.top until rect.bottom) for (x in rect.left until rect.right)
+                if (bitmap.getPixel(x, y) == label.currentTextColor) pixels++
+            assertTrue(pixels > 5); bitmap.recycle()
+        }
+    }
+
     @Test fun realClockUpdatesCachedWidgetThroughStartAndElapsedMinute() {
         org.junit.Assume.assumeTrue(InstrumentationRegistry.getArguments().getString("isolatedWidgetTest") == "true")
         assertTrue("Test device must be awake", ScheduleWidget.interactive(context))
