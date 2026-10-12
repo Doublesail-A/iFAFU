@@ -19,7 +19,8 @@ class UpcomingScheduleTest {
             event("tomorrow", time(10, 8)), event("unknown", time(9, 13), "test"))
         assertEquals(listOf("exam", "lesson"), UpcomingSchedule.today(events, now).map { it.uid })
         assertEquals(listOf("lesson", "third"), UpcomingSchedule.today(events, time(9, 14)).map { it.uid })
-        assertTrue(UpcomingSchedule.today(events, time(9, 16)).isEmpty())
+        assertEquals(listOf("third"), UpcomingSchedule.today(events, time(9, 16)).map { it.uid })
+        assertTrue(UpcomingSchedule.today(events, time(9, 16, 10)).isEmpty())
         assertEquals("tomorrow", UpcomingSchedule.next(events, time(9, 16))?.uid)
     }
     @Test fun midnightAndYearRolloverCannotShowTheFollowingDay() {
@@ -38,10 +39,36 @@ class UpcomingScheduleTest {
     }
     @Test fun durationUsesHoursAndMinutesAndPreservesExamLabels() {
         assertEquals("31分钟后上课", UpcomingSchedule.countdownText(31, "course"))
-        assertEquals("1小时47分后上课", UpcomingSchedule.countdownText(107, "course"))
-        assertEquals("2小时后考试", UpcomingSchedule.countdownText(120, "exam"))
-        assertEquals("2小时21分\n后上课", UpcomingSchedule.countdownText(141, "course", true))
+        assertEquals("1小时47分后", UpcomingSchedule.countdownText(107, "course"))
+        assertEquals("2小时后", UpcomingSchedule.countdownText(120, "exam"))
+        assertEquals("2小时21分后", UpcomingSchedule.countdownText(141, "course"))
+        assertEquals("23小时20分后", UpcomingSchedule.countdownText(1400, "course"))
         assertEquals("即将上课", UpcomingSchedule.countdownText(0, "course"))
+    }
+    @Test fun recentlyStartedCourseStaysForTenMinutesAndEndsEarlyWhenNeeded() {
+        val start = time(9, 14)
+        val course = event("current", start)
+        val next = event("next", time(9, 15))
+        assertEquals(listOf("current", "next"), UpcomingSchedule.today(listOf(next, course), start).map { it.uid })
+        assertEquals("已上课0分钟", UpcomingSchedule.label(course, start))
+        assertEquals("已上课9分钟", UpcomingSchedule.label(course, start + 599999))
+        assertEquals(listOf("next"), UpcomingSchedule.today(listOf(course, next), start + 600000).map { it.uid })
+        assertEquals(start + 60000, UpcomingSchedule.nextRefresh(listOf(course), start + 1))
+        assertEquals(start + 600000, UpcomingSchedule.nextRefresh(listOf(course), start + 599999))
+        assertTrue(UpcomingSchedule.today(listOf(course.copy(end = start + 60000)), start + 60000).isEmpty())
+        assertTrue(UpcomingSchedule.today(listOf(course.copy(kind = "exam")), start).isEmpty())
+    }
+    @Test fun warningAndSleepingDeadlinesUseBoundariesWithoutMinutePolling() {
+        val start = time(9, 14)
+        val course = event("course", start)
+        assertFalse(UpcomingSchedule.urgent(course, start - 900001))
+        assertTrue(UpcomingSchedule.urgent(course, start - 900000))
+        assertFalse(UpcomingSchedule.urgent(course, start))
+        assertTrue(UpcomingSchedule.urgent(course.copy(kind = "exam"), start - 1800000))
+        assertEquals(start - 900000, UpcomingSchedule.nextTransition(listOf(course), time(9, 12)))
+        assertEquals(start, UpcomingSchedule.nextTransition(listOf(course), start - 899999))
+        assertEquals(start + 600000, UpcomingSchedule.nextTransition(listOf(course), start + 1))
+        assertEquals(time(10) + 1000, UpcomingSchedule.nextTransition(listOf(course), start + 600000))
     }
     @Test fun countdownRoundsUpAndRefreshesAtTheNextLabelChange() {
         val now = time(9, 12)

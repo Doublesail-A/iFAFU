@@ -37,19 +37,44 @@ object ScheduleWidget {
         context.sendBroadcast(Intent(context, SyllabusWidget::class.java).setAction(ACTION_REFRESH))
     }
 
-    @Synchronized
-    fun updateAll(context: Context) {
+    private var lastRenderStamp: String? = null
+    @Volatile private var nextClockAt = 0L
+    internal fun clockTickDue(now: Long) = now >= nextClockAt
+    private fun installedIds(context: Context, manager: AppWidgetManager) = providers
+        .flatMap { manager.getAppWidgetIds(ComponentName(context, it)).toList() }
+    fun restoreClock(context: Context) {
+        WidgetClock.ensure(context, installedIds(context, AppWidgetManager.getInstance(context)).isNotEmpty())
+    }
+    internal fun interactive(context: Context) =
+        (context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager).isInteractive
+
+    @Synchronized fun updateAll(context: Context, force: Boolean = false) {
         val manager = AppWidgetManager.getInstance(context)
-        val ids = providers.flatMap { manager.getAppWidgetIds(ComponentName(context, it)).toList() }
+        val ids = installedIds(context, manager)
         val alarm = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val pending = PendingIntent.getBroadcast(context, 4301,
             Intent(context, SyllabusWidget::class.java).setAction(ACTION_REFRESH),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         alarm.cancel(pending)
-        if (ids.isEmpty()) return
+        WidgetClock.ensure(context, ids.isNotEmpty())
+        if (ids.isEmpty()) { lastRenderStamp = null; nextClockAt = Long.MAX_VALUE; return }
         val now = System.currentTimeMillis()
+        val awake = interactive(context)
         val events = ScheduleWidgetStore.load(context)
+        val time = if (awake) UpcomingSchedule.nextRefresh(events, now) else UpcomingSchedule.nextTransition(events, now)
+        nextClockAt = if (awake) time else Long.MAX_VALUE
+        // Ordinary non-wakeup alarms have no allow-while-idle quota and never wake a sleeping phone.
+        try {
+            if (Build.VERSION.SDK_INT < 31 || alarm.canScheduleExactAlarms()) alarm.setExact(AlarmManager.RTC, time, pending)
+            else alarm.set(AlarmManager.RTC, time, pending)
+        } catch (_: SecurityException) { alarm.set(AlarmManager.RTC, time, pending) }
+        if (!awake) return
         val today = UpcomingSchedule.today(events, now)
+        val stamp = ids.toString() + today.joinToString { it.toString() + UpcomingSchedule.label(it, now) + UpcomingSchedule.urgent(it, now) } +
+            ThemePreferences.getTheme(context) + ThemePreferences.getCourseSeed(context) + ThemePreferences.getWallpaperSeed(context) +
+            UpcomingSchedule.next(events.filter { it.kind == "course" }, now)?.color + context.resources.configuration
+        // TIME_TICK and the fallback deadline may coincide; send only one frame when labels changed.
+        if (!force && lastRenderStamp == stamp) return
         val colors = palette(context, events, now)
         fun configured(night: Int): Context = context.createConfigurationContext(Configuration(context.resources.configuration).apply {
             uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or night
@@ -68,24 +93,13 @@ object ScheduleWidget {
                 val options = manager.getAppWidgetOptions(id)
                 val width = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 250)
                 val height = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 60)
-                render(context, layoutFor(width, height), today, colors, now, roomy = if (width >= 250) height >= if (height < 120) 80 else 150 else height >= 180)
+                render(context, layoutFor(width, height), today, colors, now,
+                    roomy = if (width >= 250) height >= if (height < 120) 80 else 150 else height >= 180)
             }
             manager.updateAppWidget(id, views)
         }
-        // Non-wakeup refresh: minute labels update while the device is awake; sleeping phones are not woken.
-        val time = UpcomingSchedule.nextRefresh(events, now)
-        try {
-            if (Build.VERSION.SDK_INT >= 23 && (Build.VERSION.SDK_INT < 31 || alarm.canScheduleExactAlarms()))
-                alarm.setExactAndAllowWhileIdle(AlarmManager.RTC, time, pending)
-            else if (Build.VERSION.SDK_INT >= 23) alarm.setAndAllowWhileIdle(AlarmManager.RTC, time, pending)
-            else alarm.setExact(AlarmManager.RTC, time, pending)
-        } catch (_: SecurityException) {
-            // The permission can be revoked between checking and registering.
-            if (Build.VERSION.SDK_INT >= 23) alarm.setAndAllowWhileIdle(AlarmManager.RTC, time, pending)
-            else alarm.set(AlarmManager.RTC, time, pending)
-        }
+        lastRenderStamp = stamp
     }
-
     internal fun layoutFor(width: Int, height: Int) = when {
         width < 250 -> R.layout.widget_schedule_compact
         height >= 120 -> R.layout.widget_schedule_large
@@ -142,17 +156,20 @@ object ScheduleWidget {
         val badges = intArrayOf(R.id.widget_badge, R.id.widget_badge_2)
         val rows = intArrayOf(R.id.widget_row_1, R.id.widget_row_2)
         val compact = layout == R.layout.widget_schedule_compact
+        if (layout == R.layout.widget_schedule_large && roomy) {
+            val inset = (6 * context.resources.displayMetrics.density).toInt()
+            setViewPadding(R.id.widget_content, inset, inset, inset, inset)
+        }
         val selected = UpcomingSchedule.today(events, now).take(if (layout == R.layout.timetable_widget) 1 else 2)
         setViewVisibility(R.id.widget_empty, if (selected.isEmpty()) View.VISIBLE else View.GONE)
         setViewVisibility(R.id.widget_content, if (selected.isEmpty()) View.GONE else View.VISIBLE)
         setTextViewText(R.id.widget_empty, "今天接下来的时间留给自己")
         selected.forEachIndexed { index, event ->
-            val minutes = UpcomingSchedule.minutesUntil(event, now)
-            val urgent = minutes <= if (event.kind == "exam") 30 else 15
+            val urgent = UpcomingSchedule.urgent(event, now)
             setViewVisibility(rows[index], View.VISIBLE)
             setTextViewText(titles[index], (if (event.kind == "exam") "考试 · " else "") + event.title)
             setTextViewText(places[index], listOf(event.location.ifBlank { "地点待定" }, event.teacher).filter { it.isNotBlank() }.joinToString(" · "))
-            setTextViewText(countdowns[index], UpcomingSchedule.countdownText(minutes, event.kind, multiline = !compact))
+            setTextViewText(countdowns[index], UpcomingSchedule.label(event, now))
             setTextViewText(times[index], timeText(event))
             setViewVisibility(times[index], View.VISIBLE)
             if (compact) setInt(titles[index], "setMaxLines", if (roomy) 2 else 1)

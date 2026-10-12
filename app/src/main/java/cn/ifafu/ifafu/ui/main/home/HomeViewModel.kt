@@ -152,7 +152,7 @@ class HomeViewModel @Inject constructor(
             time = "${formatMinutes(start)}–${formatMinutes(end)} · 第${beginNode}–${endNode}节",
             place = detail,
             countdown = countdown,
-            urgent = start - nowInMinutes in 0 until 15,
+            urgent = start - nowInMinutes in 1..15,
         )
     }
 

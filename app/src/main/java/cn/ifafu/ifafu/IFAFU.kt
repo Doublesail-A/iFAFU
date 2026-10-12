@@ -17,6 +17,7 @@ class IFAFU : Application() {
             ThemePreferences.getTheme(this) == GlobalSetting.THEME_SYSTEM
         }
         Timber.plant(Timber.DebugTree())
+        cn.ifafu.ifafu.ui.widget.ScheduleWidget.restoreClock(this)
         // Receiver-only launches use the persisted reminder queue without database refresh.
     }
 }

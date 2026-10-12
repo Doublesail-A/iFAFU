@@ -9,12 +9,15 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 object ScheduleWidgetStore {
+    private data class Cache(val account: String, val json: String, val events: List<ScheduleEvent>)
+    @Volatile private var cache: Cache? = null
     private fun prefs(context: Context) = context.getSharedPreferences("desktop_schedule_v1", Context.MODE_PRIVATE)
 
     /** Called on the repository's IO dispatcher, even when reminders are disabled. */
     fun save(context: Context, events: List<ScheduleEvent>, account: String) {
+        val now = System.currentTimeMillis()
         val array = JSONArray()
-        events.filter { it.start > System.currentTimeMillis() && it.kind in setOf("course", "exam") }
+        events.filter { (it.start > now || UpcomingSchedule.recentCourse(it, now)) && it.kind in setOf("course", "exam") }
             .distinctBy { it.uid }.sortedBy { it.start }.forEach {
                 array.put(JSONObject().put("id", it.uid).put("title", it.title)
                     .put("location", it.location).put("start", it.start).put("end", it.end)
@@ -22,12 +25,14 @@ object ScheduleWidgetStore {
             }
         prefs(context).edit().putString("account", ScheduleEvents.key(account))
             .putString("events", array.toString()).commit()
+        cache = null
         ScheduleWidget.updateAll(context)
     }
 
     fun clearIfAccountChanged(context: Context, account: String) {
         if (prefs(context).getString("account", "") != ScheduleEvents.key(account)) {
             prefs(context).edit().clear().commit()
+            cache = null
             ScheduleWidget.updateAll(context)
         }
     }
@@ -36,11 +41,16 @@ object ScheduleWidgetStore {
         val account = SPUtils.getInstance(Constants.SP_USER_INFO).getString("account", "")
         if (account.isBlank() || prefs(context).getString("account", "") != ScheduleEvents.key(account))
             return@runCatching emptyList()
-        val array = JSONArray(prefs(context).getString("events", "[]"))
-        (0 until array.length()).map {
+        val accountKey = ScheduleEvents.key(account)
+        val json = prefs(context).getString("events", "[]")!!
+        cache?.takeIf { it.account == accountKey && it.json == json }?.let { return@runCatching it.events }
+        val array = JSONArray(json)
+        val events = (0 until array.length()).map {
             val obj = array.getJSONObject(it)
             ScheduleEvent(obj.getString("id"), "", obj.getString("title"), obj.getString("location"),
                 "", obj.getLong("start"), obj.getLong("end"), obj.getInt("color"), obj.getString("kind"), teacher = obj.optString("teacher"), week = obj.optInt("week"))
         }
+        cache = Cache(accountKey, json, events)
+        events
     }.getOrDefault(emptyList())
 }

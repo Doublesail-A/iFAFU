@@ -90,17 +90,17 @@ class WidgetIntegrationTest {
                             for (line in 0 until text.layout.lineCount) assertTrue("Text line must fit: " + text.text,
                                 text.layout.getLineWidth(line) <= text.width - text.compoundPaddingLeft - text.compoundPaddingRight + 1)
                         }
-                        assertEquals(UpcomingSchedule.countdownText(12, "course", layout != R.layout.widget_schedule_compact), view.findViewById<TextView>(R.id.widget_countdown).text.toString())
+                        assertEquals(UpcomingSchedule.countdownText(12, "course"), view.findViewById<TextView>(R.id.widget_countdown).text.toString())
                         assertEquals(colors.ink, view.findViewById<TextView>(R.id.widget_title).currentTextColor)
                         if (layout != R.layout.timetable_widget) {
                             assertEquals("考试 · 普通化学", view.findViewById<TextView>(R.id.widget_title_2).text.toString())
-                            assertEquals(UpcomingSchedule.countdownText(141, "exam", layout != R.layout.widget_schedule_compact), view.findViewById<TextView>(R.id.widget_countdown_2).text.toString())
+                            assertEquals(UpcomingSchedule.countdownText(141, "exam"), view.findViewById<TextView>(R.id.widget_countdown_2).text.toString())
                         } else assertEquals(View.GONE, view.findViewById<View>(R.id.widget_row_2).visibility)
                         assertTrue(view.findViewById<TextView>(R.id.widget_location).text.toString().contains("林老师"))
                         assertEquals(View.VISIBLE, view.findViewById<View>(R.id.widget_time).visibility)
                         val countdown = view.findViewById<TextView>(R.id.widget_countdown)
                         assertEquals(android.view.Gravity.CENTER, countdown.gravity)
-                        assertEquals("Countdown line count must match its presentation", if (layout == R.layout.widget_schedule_compact) 1 else 2, countdown.layout.lineCount)
+                        assertEquals("Countdown line count must match its presentation", 1, countdown.layout.lineCount)
                         assertTrue("All countdown lines must be visible: " + countdown.layout.height + "/" + countdown.height, countdown.layout.height <= countdown.height)
                         assertEquals(colors.onErrorContainer, countdown.currentTextColor)
                         assertTrue(contrast(colors.onErrorContainer, colors.errorContainer) >= 4.5)
@@ -143,6 +143,67 @@ class WidgetIntegrationTest {
                 }
             }
         } finally { ThemePreferences.setTheme(context, original) }
+    }
+
+    @Test fun realClockUpdatesCachedWidgetThroughStartAndElapsedMinute() {
+        org.junit.Assume.assumeTrue(InstrumentationRegistry.getArguments().getString("isolatedWidgetTest") == "true")
+        assertTrue("Test device must be awake", ScheduleWidget.interactive(context))
+        val inexact = InstrumentationRegistry.getArguments().getString("widgetInexactTest") == "true"
+        assertEquals(!inexact, (context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager).canScheduleExactAlarms())
+        val account = "widget-test-account"
+        SPUtils.getInstance(Constants.SP_USER_INFO).put("account", account, true)
+        val updates = java.util.concurrent.atomic.AtomicInteger()
+        val host = object : AppWidgetHost(context, 9274) {
+            override fun onCreateView(context: Context, id: Int, info: android.appwidget.AppWidgetProviderInfo) =
+                object : android.appwidget.AppWidgetHostView(context) {
+                    override fun updateAppWidget(remoteViews: android.widget.RemoteViews?) {
+                        updates.incrementAndGet(); super.updateAppWidget(remoteViews)
+                    }
+                }
+        }
+        val manager = AppWidgetManager.getInstance(context)
+        val id = host.allocateAppWidgetId()
+        var view: android.appwidget.AppWidgetHostView? = null
+        try {
+            assertTrue(manager.bindAppWidgetIdIfAllowed(id, ComponentName(context, SyllabusWidget::class.java)))
+            instrumentation.runOnMainSync {
+                host.startListening()
+                view = host.createView(context, id, manager.getAppWidgetInfo(id))
+            }
+            var now = System.currentTimeMillis()
+            if (inexact && 60000 - now % 60000 < 5000) { Thread.sleep(5000); now = System.currentTimeMillis() }
+            val start = if (inexact) (now / 60000 + 1) * 60000 + 10 * 60000 else now + 5000
+            val course = fixture(start = start).copy(teacher = "林老师")
+            ScheduleWidgetStore.save(context, listOf(course), account)
+            fun label(): String {
+                var value = ""
+                instrumentation.runOnMainSync { value = view!!.findViewById<TextView>(R.id.widget_countdown)?.text?.toString().orEmpty() }
+                return value
+            }
+            fun waitFor(expected: String, timeout: Long) {
+                val deadline = android.os.SystemClock.elapsedRealtime() + timeout
+                while (label() != expected && android.os.SystemClock.elapsedRealtime() < deadline) Thread.sleep(100)
+                assertEquals(expected, label())
+            }
+            waitFor(if (inexact) "11分钟后上课" else "1分钟后上课", 4000)
+            Thread.sleep(300)
+            val count = updates.get()
+            ScheduleWidget.updateAll(context); ScheduleWidget.updateAll(context)
+            Thread.sleep(300)
+            assertEquals("Coincident refreshes must not send duplicate frames", count, updates.get())
+            assertSame("Unchanged schedules must reuse parsed data", ScheduleWidgetStore.load(context), ScheduleWidgetStore.load(context))
+            if (inexact) { waitFor("10分钟后上课", 65000); return }
+            waitFor("已上课0分钟", 10000)
+            // A repository refresh during the first ten minutes must not drop this course.
+            ScheduleWidgetStore.save(context, listOf(course), account)
+            assertEquals(course.uid, ScheduleWidgetStore.load(context).single().uid)
+            waitFor("已上课1分钟", 65000)
+        } finally {
+            instrumentation.runOnMainSync { host.stopListening() }
+            host.deleteAppWidgetId(id)
+            SPUtils.getInstance(Constants.SP_USER_INFO).put("account", "", true)
+            ScheduleWidgetStore.clearIfAccountChanged(context, "")
+        }
     }
 
     @Test fun prepareColdWidget() {

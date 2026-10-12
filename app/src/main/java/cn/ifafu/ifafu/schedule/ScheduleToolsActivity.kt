@@ -130,7 +130,7 @@ class ScheduleToolsActivity : BaseActivity() {
         if (Build.VERSION.SDK_INT < 31 || ReminderScheduler.exact(this)) return
         MaterialAlertDialogBuilder(this)
             .setTitle("让提醒按时送达")
-            .setMessage("请允许“闹钟和提醒”。上课前 15 分钟、考试前 30 分钟的提醒由 Android 系统触发，退出应用也能收到；未允许时系统可能延迟提醒。")
+            .setMessage("请允许“闹钟和提醒”。上课前 15 分钟、考试前 30 分钟的提醒由 Android 系统触发，退出应用也能收到；允许后，小组件在亮屏时也能按分钟刷新；熄屏不会为刷新小组件唤醒手机。未允许时系统可能延迟后台提醒和小组件刷新。")
             .setPositiveButton("去允许") { _, _ ->
                 startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + packageName)))
             }
