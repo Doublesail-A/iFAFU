@@ -22,6 +22,7 @@ abstract class BaseActivity : AppCompatActivity {
 
     private var toast: Toast? = null
     private var appliedPaletteKey = ""
+    private var startupPermissions: cn.ifafu.ifafu.schedule.StartupPermissions? = null
 
     constructor() : super()
     constructor(contentLayoutId: Int) : super(contentLayoutId)
@@ -30,6 +31,7 @@ abstract class BaseActivity : AppCompatActivity {
         ThemeManager.apply(this)
         appliedPaletteKey = ThemeManager.paletteKey(this)
         super.onCreate(savedInstanceState)
+        if (this !is cn.ifafu.ifafu.ui.activity.SplashActivity) startupPermissions = cn.ifafu.ifafu.schedule.StartupPermissions(this)
         (application as cn.ifafu.ifafu.IFAFU).scheduleRepository.get().start()
         window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
         window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(
@@ -39,6 +41,10 @@ abstract class BaseActivity : AppCompatActivity {
 
     override fun onResume() {
         super.onResume()
+        cn.ifafu.ifafu.ui.widget.ScheduleWidget.updateAll(this, force = true)
+        cn.ifafu.ifafu.schedule.ReminderScheduler.scheduleNext(this)
+        (application as cn.ifafu.ifafu.IFAFU).scheduleRepository.get().refresh()
+        window.decorView.post { if (!isFinishing && !isDestroyed) startupPermissions?.check() }
         if (appliedPaletteKey != ThemeManager.paletteKey(this)) recreate()
     }
 

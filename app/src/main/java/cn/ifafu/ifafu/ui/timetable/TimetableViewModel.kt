@@ -28,6 +28,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class TimetableViewModel @Inject constructor(
+    private val agendas: cn.ifafu.ifafu.schedule.AgendaRepository,
     private val repository: TimetableRepository
 ) : BaseViewModel() {
 
@@ -75,9 +76,17 @@ class TimetableViewModel @Inject constructor(
             .seedFor(next.name)
     }
 
+    val agendaItems = MutableLiveData<List<cn.ifafu.ifafu.entity.AgendaItem>>()
+    private var agendaJob: Job? = null
+    fun refreshAgenda() {
+        agendaJob?.cancel()
+        val account = agendas.account()
+        agendaJob = viewModelScope.launch { agendas.observe(account).collect { agendaItems.value = it } }
+    }
     val message = MutableLiveData<String>()
 
     init {
+        refreshAgenda()
         viewModelScope.launch {
             updateBackground()
             updateTimetableSetting()

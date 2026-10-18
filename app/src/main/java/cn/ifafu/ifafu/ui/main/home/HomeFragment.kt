@@ -21,7 +21,7 @@ class HomeFragment : Fragment(R.layout.home_fragment) {
     private val minuteRefresh = object : Runnable {
         override fun run() {
             viewModel.refresh()
-            binding?.root?.postDelayed(this, 60_000L)
+            binding?.root?.postDelayed(this, 60_000L - System.currentTimeMillis() % 60_000L)
         }
     }
 
@@ -43,7 +43,7 @@ class HomeFragment : Fragment(R.layout.home_fragment) {
         super.onStart()
         viewModel.refresh()
         binding?.root?.removeCallbacks(minuteRefresh)
-        binding?.root?.postDelayed(minuteRefresh, 60_000L)
+        binding?.root?.postDelayed(minuteRefresh, 60_000L - System.currentTimeMillis() % 60_000L)
     }
 
     override fun onStop() {
@@ -65,8 +65,8 @@ class HomeFragment : Fragment(R.layout.home_fragment) {
 
         currentBinding.tvCourseSummary.text = when (state.courses.size) {
             0 -> "查看完整课程表"
-            1 -> "接下来 1 门"
-            else -> "接下来 2 门"
+            1 -> "接下来 1 项"
+            else -> "接下来 2 项"
         }
         bindCourse(
             state.courses.getOrNull(0),
@@ -97,6 +97,9 @@ class HomeFragment : Fragment(R.layout.home_fragment) {
         currentBinding.tvExamPlace.visibility = if (hasExam) View.VISIBLE else View.GONE
         if (exam != null) {
             currentBinding.tvExamCountdown.text = exam.countdown
+            currentBinding.tvExamCountdown.setBackgroundResource(if (exam.urgent) R.drawable.shape_home_countdown_urgent else R.drawable.shape_home_countdown)
+            currentBinding.tvExamCountdown.setTextColor(MaterialColors.getColor(currentBinding.tvExamCountdown,
+                if (exam.urgent) com.google.android.material.R.attr.colorOnErrorContainer else com.google.android.material.R.attr.colorOnSecondaryContainer))
             currentBinding.tvExamName.text = exam.name
             currentBinding.tvExamTime.text = exam.time
             currentBinding.tvExamPlace.text = exam.place

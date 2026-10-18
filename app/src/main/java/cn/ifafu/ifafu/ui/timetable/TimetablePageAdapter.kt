@@ -4,176 +4,107 @@ import android.view.View
 import android.view.ViewGroup
 import android.graphics.Color
 import androidx.recyclerview.widget.RecyclerView
-import cn.ifafu.ifafu.R
 import cn.ifafu.ifafu.bean.vo.OpeningDayVO
 import cn.ifafu.ifafu.bean.vo.TimetableVO
 import cn.ifafu.ifafu.entity.SyllabusSetting
+import cn.ifafu.ifafu.entity.AgendaItem
 import cn.ifafu.ifafu.ui.view.timetable.TimetableItem
 import cn.ifafu.ifafu.ui.view.timetable.TimetableView
-import cn.ifafu.ifafu.util.DateUtils
-import java.util.*
 import com.google.android.material.color.MaterialColors
+import com.google.android.material.color.utilities.TonalPalette
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
+import java.util.Calendar
 
 class TimetablePageAdapter(
     private val onItemClickListener: (View, TimetableItem) -> Unit,
     private val onItemLongClickListener: (View, TimetableItem) -> Unit
 ) : RecyclerView.Adapter<TimetablePageAdapter.SyllabusViewHolder>() {
-
-    /**
-     * 按周分类
-     */
     private var data: TimetableVO? = null
-    private var dataVersion = 0
-
     private var setting: SyllabusSetting? = null
-    private var settingVersion = 0 //用于记录setting的版本
-
     private var openingDay: OpeningDayVO? = null
-    private var openingDayVersion = 0
-
+    private var agenda: List<AgendaItem> = emptyList()
     private var hasWallpaper = false
-
-    fun updateWallpaper(present: Boolean) {
-        if (hasWallpaper == present) return
-        hasWallpaper = present
-        notifyDataSetChanged()
+    private var firstWeek = 1
+    private var lastWeek = 20
+    private var includedDate: LocalDate? = null
+    private fun firstSunday(): LocalDate {
+        val first = runCatching { LocalDate.parse(openingDay?.openingDay) }.getOrNull() ?: LocalDate.now()
+        return first.minusDays((first.dayOfWeek.value % 7).toLong())
     }
-
-    fun updateTimetable(timetable: TimetableVO) {
-        this.data = timetable
-        dataVersion++
-        notifyDataSetChanged()
+    private fun weekOf(date: LocalDate) = Math.floorDiv(ChronoUnit.DAYS.between(firstSunday(), date), 7L).toInt() + 1
+    private fun range() {
+        val weeks = agenda.map { weekOf(LocalDate.parse(it.date)) } + listOfNotNull(includedDate?.let(::weekOf))
+        firstWeek = minOf(1, weeks.minOrNull() ?: 1)
+        lastWeek = maxOf(setting?.weekCnt ?: 20, weeks.maxOrNull() ?: 1)
     }
+    fun weekAt(position: Int) = firstWeek + position
+    fun positionForWeek(week: Int) = (week - firstWeek).coerceIn(0, itemCount - 1)
+    fun dateForWeek(week: Int) = firstSunday().plusWeeks((week - 1).toLong())
+    fun positionForDate(date: LocalDate) = positionForWeek(weekOf(date))
+    fun includeDate(date: LocalDate) { includedDate = date; range(); notifyDataSetChanged() }
+    fun updateAgenda(items: List<AgendaItem>) { agenda = items; range(); notifyDataSetChanged() }
+    fun updateWallpaper(present: Boolean) { hasWallpaper = present; notifyDataSetChanged() }
+    fun updateTimetable(timetable: TimetableVO) { data = timetable; notifyDataSetChanged() }
+    fun updateSetting(value: SyllabusSetting) { setting = value; range(); notifyDataSetChanged() }
+    fun updateOpeningDay(value: OpeningDayVO) { openingDay = value; range(); notifyDataSetChanged() }
+    fun refreshUrgency() { notifyItemRangeChanged(0, itemCount) }
 
-    fun updateSetting(setting: SyllabusSetting) {
-        this.setting = setting
-        settingVersion++
-        notifyDataSetChanged()
-    }
-
-    fun updateOpeningDay(openingDay: OpeningDayVO) {
-        this.openingDay = openingDay
-        openingDayVersion++
-        notifyDataSetChanged()
-    }
-
-    fun refreshUrgency() {
-        if (itemCount > 0) notifyItemRangeChanged(0, itemCount)
-    }
-
-    //将View和ViewHolder绑定在一起
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SyllabusViewHolder {
-        val timetable = TimetableView(parent.context)
-        timetable.layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT
-        )
-        timetable.config = timetable.config.apply {
-            otherTextColor = MaterialColors.getColor(
-                timetable,
-                com.google.android.material.R.attr.colorOnSurfaceVariant,
-                Color.DKGRAY,
-            )
-        }
-        timetable.setItemClickListener { v, item ->
-            onItemClickListener.invoke(v, item)
-        }
-        timetable.setItemLongClickListener { v, item ->
-            onItemLongClickListener.invoke(v, item)
-        }
-        return SyllabusViewHolder(timetable)
+        val view = TimetableView(parent.context)
+        view.layoutParams = ViewGroup.LayoutParams(-1, -1)
+        view.setItemClickListener { v, item -> onItemClickListener(v, item) }
+        view.setItemLongClickListener { v, item -> onItemLongClickListener(v, item) }
+        return SyllabusViewHolder(view)
     }
-
-    //将数据显示在View上
     override fun onBindViewHolder(holder: SyllabusViewHolder, position: Int) {
-        holder.timetable.setBackgroundColor(if (hasWallpaper) Color.TRANSPARENT else
-            MaterialColors.getColor(holder.timetable, com.google.android.material.R.attr.colorSurface, Color.WHITE))
-        val setting = setting
-        if (setting != null) {
-            if (holder.settingVersion < settingVersion) {
-                holder.timetable.config = holder.timetable.config.apply {
-                    totalNodeCount = setting.totalNode
-                    showTime = setting.showBeginTimeText
-                    showHorizontalLine = setting.showHorizontalLine
-                    showVerticalLine = setting.showVerticalLine
-                    itemTextSize = setting.textSize.toFloat()
-                    otherTextColor = MaterialColors.getColor(
-                        holder.timetable,
-                        com.google.android.material.R.attr.colorOnSurfaceVariant,
-                        setting.themeColor.takeIf { it != Color.BLACK } ?: Color.DKGRAY
-                    )
-                }
-                holder.timetable.setTimeText(setting.getBeginTimeText().drop(1).toTypedArray())
-                holder.settingVersion = settingVersion
+        val view = holder.timetable
+        val settings = setting ?: SyllabusSetting()
+        val week = weekAt(position)
+        val date = dateForWeek(week)
+        view.setBackgroundColor(if (hasWallpaper) Color.TRANSPARENT else MaterialColors.getColor(view,
+            com.google.android.material.R.attr.colorSurface, Color.WHITE))
+        val colors = CourseColorPalette.forCourses(view.context, data?.data.orEmpty().flatten().map { it.name })
+        view.config = view.config.apply {
+            totalNodeCount = settings.totalNode
+            showTime = settings.showBeginTimeText
+            showHorizontalLine = settings.showHorizontalLine
+            showVerticalLine = settings.showVerticalLine
+            itemTextSize = settings.textSize.toFloat()
+            otherTextColor = MaterialColors.getColor(view, com.google.android.material.R.attr.colorOnSurfaceVariant, Color.DKGRAY)
+            colorPool = MaterialCourseColorPool(view, colors)
+        }
+        view.setTimeText(settings.getBeginTimeText().drop(1).toTypedArray())
+        val items = data?.getWeek(week).orEmpty().map { source ->
+            val first = settings.beginTime.getOrNull(source.startNode) ?: 0
+            val last = settings.beginTime.getOrNull(source.startNode + source.nodeCount - 1) ?: first
+            TimetableItem().apply {
+                name = source.name; address = source.address; tag = source.tag
+                dayOfWeek = source.dayOfWeek; startNode = source.startNode; nodeCount = source.nodeCount
+                startMinute = first / 100 * 60 + first % 100
+                endMinute = last / 100 * 60 + last % 100 + settings.nodeLength
+            }
+        }.toMutableList()
+        val dark = view.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        agenda.filter { LocalDate.parse(it.date) in date..date.plusDays(6) }.forEach { event ->
+            items += TimetableItem().apply {
+                name = event.title; address = event.location; tag = event; agenda = true
+                dayOfWeek = LocalDate.parse(event.date).dayOfWeek.value % 7 + 1
+                startNode = 1; nodeCount = 1; startMinute = event.startMinute; endMinute = event.endMinute
+                customColor = if (dark) TonalPalette.fromInt(event.color).tone(40) else event.color
             }
         }
-
-        if (holder.dataVersion != dataVersion || holder.showPosition != position) {
-            holder.dataVersion = dataVersion
-            val colors = CourseColorPalette.forCourses(holder.itemView.context,
-                data?.data.orEmpty().flatten().map { it.name })
-            holder.timetable.config = holder.timetable.config.apply {
-                colorPool = MaterialCourseColorPool(holder.timetable, colors)
-            }
-            val courseList = data?.getWeek(position + 1)
-            holder.timetable.setItems(courseList)
-        }
-
+        view.setItems(items)
         val now = Calendar.getInstance()
-        val currentWeek = openingDay?.getCurrentWeek()
-        val courseList = data?.getWeek(position + 1).orEmpty()
-        val urgentKeys = if (currentWeek == position + 1) {
-            val nowMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
-            courseList.asSequence()
-                .filter { it.dayOfWeek == now.get(Calendar.DAY_OF_WEEK) }
-                .filter { it.startNode in 1 until (setting?.beginTime?.size ?: 0) }
-                .filter {
-                    val encoded = setting!!.beginTime[it.startNode]
-                    val startMinutes = encoded / 100 * 60 + encoded % 100
-                    startMinutes - nowMinutes in 0 until 15
-                }
-                .map(TimetableView::itemKey)
-                .toSet()
-        } else {
-            emptySet()
-        }
-        holder.timetable.setUrgentItemKeys(urgentKeys)
-
-        if (holder.openingDayVersion != openingDayVersion || holder.showPosition != position) {
-            holder.openingDayVersion = openingDayVersion
-            val d = openingDay?.getOpeningDay()
-            if (d == null) {
-                holder.timetable.setMonth(-1)
-                holder.timetable.setDateTexts(null)
-                holder.timetable.setTodayColumn(-1)
-            } else {
-                val weekStart = Calendar.getInstance().apply {
-                    time = d
-                    add(Calendar.DAY_OF_YEAR, -(get(Calendar.DAY_OF_WEEK) - 1))
-                    add(Calendar.DAY_OF_YEAR, position * 7)
-                }
-                val dates = DateUtils.getWeekOffsetDates(Date(weekStart.timeInMillis), 0, "d")
-                val month = weekStart.get(Calendar.MONTH) + 1
-                holder.timetable.setMonth(month)
-                holder.timetable.setDateTexts(dates.toTypedArray())
-                val todayOffset = DateUtils.calcLastDays(weekStart.time, Date())
-                holder.timetable.setTodayColumn(todayOffset.takeIf { it in 0..6 } ?: -1)
-            }
-        }
-        holder.showPosition = position
+        val today = LocalDate.now()
+        val nowMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+        view.setUrgentItemKeys(items.filter {
+            date.plusDays((it.dayOfWeek - 1).toLong()) == today && it.startMinute - nowMinutes in 1..15
+        }.map(TimetableView::itemKey).toSet())
+        view.setMonth(date.monthValue)
+        view.setDateTexts((0L..6L).map { date.plusDays(it).dayOfMonth.toString() }.toTypedArray())
+        view.setTodayColumn(ChronoUnit.DAYS.between(date, today).toInt().takeIf { it in 0..6 } ?: -1)
     }
-
-    override fun getItemCount(): Int {
-        return setting?.weekCnt ?: 0
-    }
-
-    class SyllabusViewHolder(itemView: TimetableView) : RecyclerView.ViewHolder(itemView) {
-        val timetable: TimetableView = itemView
-        var showPosition = -1
-
-        var openingDayVersion = -1
-        var dataVersion = -1
-        var settingVersion = -1
-    }
-
+    override fun getItemCount() = (lastWeek - firstWeek + 1).coerceAtLeast(1)
+    class SyllabusViewHolder(val timetable: TimetableView) : RecyclerView.ViewHolder(timetable)
 }

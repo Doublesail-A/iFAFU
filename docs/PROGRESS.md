@@ -1,5 +1,7 @@
 # iFAFU Material 3 阶段性总结与课表编排说明
 
+> 本文是截至 1.0.5 的阶段记录。1.1.0 已用与首页共用的完整上下课倒计时替换十分钟保留规则，并增加独立日程，后续行为见 [README](../README.md)。
+
 记录日期：2026-10-18。本文描述已经落地的实现、验证记录和仍然存在的边界，供后续维护和回归检查使用。
 
 - 项目：[Doublesail-A/iFAFU](https://github.com/Doublesail-A/iFAFU)，上游：[woolsen/iFAFU](https://github.com/woolsen/iFAFU)。

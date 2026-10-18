@@ -17,7 +17,7 @@ object ScheduleWidgetStore {
     fun save(context: Context, events: List<ScheduleEvent>, account: String) {
         val now = System.currentTimeMillis()
         val array = JSONArray()
-        events.filter { (it.start > now || UpcomingSchedule.recentCourse(it, now)) && it.kind in setOf("course", "exam") }
+        events.filter { (it.start > now || cn.ifafu.ifafu.schedule.TodaySchedule.active(it, now)) && it.kind in cn.ifafu.ifafu.schedule.TodaySchedule.kinds }
             .distinctBy { it.uid }.sortedBy { it.start }.forEach {
                 array.put(JSONObject().put("id", it.uid).put("title", it.title)
                     .put("location", it.location).put("start", it.start).put("end", it.end)

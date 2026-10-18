@@ -56,6 +56,13 @@ class TimetableItemActivity : BaseActivity(), View.OnClickListener {
 
     private val mWeekAdapter: WeekItemAdapter = WeekItemAdapter(this)
 
+    @Inject lateinit var agendas: cn.ifafu.ifafu.schedule.AgendaRepository
+    private var agendaMode = true
+    private var agendaId: String? = null
+    private var agendaDate = java.time.LocalDate.now()
+    private var agendaStart = (java.time.LocalTime.now().hour * 60 + 30).coerceAtMost(1380)
+    private var agendaEnd = (agendaStart + 60).coerceAtMost(1439)
+    private var agendaColor = cn.ifafu.ifafu.schedule.AgendaEvents.swatches[0]
     private var enterType = ADD
 
     @Inject
@@ -75,6 +82,8 @@ class TimetableItemActivity : BaseActivity(), View.OnClickListener {
             }
         }
 
+        fun intentForAgenda(context: Context, id: String) = Intent(context, TimetableItemActivity::class.java).putExtra("agenda_id", id).putExtra("type", CHECK)
+
         fun intentForAdd(context: Context, year: String, term: String): Intent {
             return Intent(context, TimetableItemActivity::class.java).apply {
                 putExtra("year", year)
@@ -91,8 +100,29 @@ class TimetableItemActivity : BaseActivity(), View.OnClickListener {
         setContentView(binding.root)
 
         enterType = intent.getIntExtra("type", -1)
+        agendaId = intent.getStringExtra("agenda_id")
+        agendaMode = savedInstanceState?.getBoolean("agenda_mode") ?: (enterType == ADD || agendaId != null)
+        agendaDate = java.time.LocalDate.parse(savedInstanceState?.getString("agenda_date") ?: intent.getStringExtra("date") ?: agendaDate.toString())
+        agendaStart = savedInstanceState?.getInt("agenda_start") ?: agendaStart
+        agendaEnd = savedInstanceState?.getInt("agenda_end") ?: agendaEnd
+        agendaColor = savedInstanceState?.getInt("agenda_color") ?: agendaColor
+        binding.typeAgenda.setOnClickListener { agendaMode = true; editMode(true) }
+        binding.typeCourse.setOnClickListener { agendaMode = false; editMode(true) }
+        initAgendaEditor()
 
         lifecycleScope.launchWhenCreated {
+            if (agendaId != null) {
+                val item = agendas.find(agendaId!!) ?: run { showToast("日程不存在或已删除"); finish(); return@launchWhenCreated }
+                if (savedInstanceState == null) {
+                    agendaDate = java.time.LocalDate.parse(item.date); agendaStart = item.startMinute
+                    agendaEnd = item.endMinute; agendaColor = item.color
+                }
+                binding.agendaEditor.agendaTitle.setText(item.title)
+                binding.agendaEditor.agendaLocation.setText(item.location)
+                binding.agendaEditor.agendaNotes.setText(item.notes)
+                updateAgendaButtons(); editMode(true)
+                return@launchWhenCreated
+            }
             when (enterType) {
                 ADD -> {
                     val year = intent.getStringExtra("year")
@@ -203,18 +233,32 @@ class TimetableItemActivity : BaseActivity(), View.OnClickListener {
     private fun editMode(edit: Boolean) {
         mWeekAdapter.editMode = edit
         binding.layoutCourseRead.isVisible = !edit
-        binding.layoutCourseEdit.isVisible = edit
+        binding.layoutCourseEdit.isVisible = edit && !agendaMode
+        binding.layoutCourseRead.isVisible = !edit && !agendaMode
+        binding.projectTypes.isVisible = enterType == ADD
+        binding.agendaEditor.root.isVisible = agendaMode
+        binding.tvWeeksHeading.isVisible = !agendaMode
+        binding.tvWeeksSupporting.isVisible = !agendaMode
+        binding.weeksRv.isVisible = !agendaMode
+        listOf(binding.typeAgenda to agendaMode, binding.typeCourse to !agendaMode).forEach { (button, selected) ->
+            button.isSelected = selected
+            button.backgroundTintList = android.content.res.ColorStateList.valueOf(MaterialColors.getColor(button,
+                if (selected) com.google.android.material.R.attr.colorPrimaryContainer else com.google.android.material.R.attr.colorSurfaceVariant))
+            button.setTextColor(MaterialColors.getColor(button, if (selected) com.google.android.material.R.attr.colorOnPrimaryContainer else com.google.android.material.R.attr.colorOnSurfaceVariant))
+            button.icon = if (selected) androidx.appcompat.content.res.AppCompatResources.getDrawable(this, R.drawable.ic_m3_check) else null
+        }
         binding.tvWeeksHeading.text = if (edit) "选择上课周次" else "上课周次"
         binding.tvWeeksSupporting.text = if (edit) "点按周次可添加或移除" else "课程出现的教学周"
         binding.toolBar.title = when {
-            enterType == ADD && edit -> "添加课程"
+            enterType == ADD -> "添加项目"
+            agendaMode -> "编辑日程"
             edit -> "编辑课程"
             else -> "课程详情"
         }
 
         binding.toolBar.menu.findItem(R.id.timetable_menu_save)?.isVisible = edit
-        binding.toolBar.menu.findItem(R.id.timetable_menu_delete)?.isVisible = !edit
-        binding.toolBar.menu.findItem(R.id.timetable_menu_edit)?.isVisible = !edit
+        binding.toolBar.menu.findItem(R.id.timetable_menu_delete)?.isVisible = !edit || agendaId != null
+        binding.toolBar.menu.findItem(R.id.timetable_menu_edit)?.isVisible = !edit && !agendaMode
     }
 
     override fun onClick(view: View) {
@@ -224,6 +268,7 @@ class TimetableItemActivity : BaseActivity(), View.OnClickListener {
     }
 
     private fun save() {
+        if (agendaMode) { saveAgenda(); return }
         if (binding.etCourseName.text.isNullOrBlank()) {
             snackbar("请填写课程名称")
             return
@@ -247,10 +292,113 @@ class TimetableItemActivity : BaseActivity(), View.OnClickListener {
             editMode(false)
             KeyboardUtils.hideSoftInput(this@TimetableItemActivity)
             initCourseView(course)
+            finish()
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean("agenda_mode", agendaMode)
+        outState.putString("agenda_date", agendaDate.toString())
+        outState.putInt("agenda_start", agendaStart); outState.putInt("agenda_end", agendaEnd)
+        outState.putInt("agenda_color", agendaColor)
+        super.onSaveInstanceState(outState)
+    }
+
+    private fun initAgendaEditor() {
+        val editor = binding.agendaEditor
+        editor.agendaDate.setOnClickListener {
+            val picker = com.google.android.material.datepicker.MaterialDatePicker.Builder.datePicker()
+                .setTitleText("选择日程日期")
+                .setSelection(agendaDate.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()).build()
+            picker.addOnPositiveButtonClickListener { utc ->
+                agendaDate = java.time.Instant.ofEpochMilli(utc).atZone(java.time.ZoneOffset.UTC).toLocalDate()
+                updateAgendaButtons()
+            }
+            picker.show(supportFragmentManager, "agenda_date")
+        }
+        editor.agendaStart.setOnClickListener { chooseAgendaTime(true) }
+        editor.agendaEnd.setOnClickListener { chooseAgendaTime(false) }
+        editor.agendaCustomColor.setOnClickListener {
+            val field = com.google.android.material.textfield.TextInputLayout(this)
+            val input = com.google.android.material.textfield.TextInputEditText(field.context).apply {
+                setSingleLine(); setText("#%06X".format(agendaColor and 0xffffff))
+            }
+            field.hint = "颜色（#RRGGBB）"; field.addView(input)
+            val inset = (24 * resources.displayMetrics.density).toInt()
+            val container = android.widget.FrameLayout(this).apply { setPadding(inset, 0, inset, 0); addView(field) }
+            val dialog = MaterialAlertDialogBuilder(this).setTitle("自定义日程颜色").setView(container)
+                .setNegativeButton("取消", null).setPositiveButton("确定", null).create()
+            dialog.setOnShowListener {
+                dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                    val value = input.text.toString().trim()
+                    if (!value.matches(Regex("#[0-9a-fA-F]{6}"))) field.error = "请输入六位十六进制颜色"
+                    else { agendaColor = android.graphics.Color.parseColor(value); updateAgendaButtons(); dialog.dismiss() }
+                }
+            }
+            dialog.show()
+        }
+        updateAgendaButtons()
+    }
+
+    private fun chooseAgendaTime(start: Boolean) {
+        val minutes = if (start) agendaStart else agendaEnd.coerceAtMost(1439)
+        val picker = com.google.android.material.timepicker.MaterialTimePicker.Builder()
+            .setTimeFormat(com.google.android.material.timepicker.TimeFormat.CLOCK_24H)
+            .setHour(minutes / 60).setMinute(minutes % 60).setTitleText(if (start) "开始时间" else "结束时间").build()
+        picker.addOnPositiveButtonClickListener {
+            if (start) agendaStart = picker.hour * 60 + picker.minute else agendaEnd = picker.hour * 60 + picker.minute
+            updateAgendaButtons()
+        }
+        picker.show(supportFragmentManager, if (start) "agenda_start" else "agenda_end")
+    }
+
+    private fun updateAgendaButtons() {
+        val editor = binding.agendaEditor
+        editor.agendaDate.text = agendaDate.format(java.time.format.DateTimeFormatter.ofPattern("yyyy年M月d日 · EEEE", java.util.Locale.CHINA))
+        fun time(value: Int) = "%02d:%02d".format(value / 60, value % 60)
+        editor.agendaStart.text = "开始 " + time(agendaStart)
+        editor.agendaEnd.text = "结束 " + time(agendaEnd)
+        editor.agendaColors.removeAllViews()
+        val choices = (cn.ifafu.ifafu.schedule.AgendaEvents.swatches.toList() + agendaColor).distinct()
+        choices.forEachIndexed { index, color ->
+            val selected = color == agendaColor
+            val button = com.google.android.material.button.MaterialButton(this).apply {
+                val dp = resources.displayMetrics.density
+                layoutParams = android.widget.LinearLayout.LayoutParams((48 * dp).toInt(), (52 * dp).toInt()).apply { marginEnd = (6 * dp).toInt() }
+                minWidth = 0; minimumWidth = 0; setPadding(0, 0, 0, 0); cornerRadius = (24 * dp).toInt()
+                backgroundTintList = android.content.res.ColorStateList.valueOf(color)
+                setTextColor(cn.ifafu.ifafu.ui.timetable.CourseColorPalette.foreground(color))
+                text = if (selected) "✓" else ""
+                contentDescription = "颜色 ${index + 1}" + if (selected) "，已选中" else ""
+                setOnClickListener { agendaColor = color; updateAgendaButtons() }
+            }
+            editor.agendaColors.addView(button)
+        }
+    }
+
+    private fun saveAgenda() {
+        val editor = binding.agendaEditor
+        val item = cn.ifafu.ifafu.entity.AgendaItem(id = agendaId ?: java.util.UUID.randomUUID().toString(),
+            account = agendas.account(), title = editor.agendaTitle.text.toString().trim(), date = agendaDate.toString(),
+            startMinute = agendaStart, endMinute = agendaEnd, location = editor.agendaLocation.text.toString().trim(),
+            notes = editor.agendaNotes.text.toString().trim(), color = agendaColor)
+        try { cn.ifafu.ifafu.schedule.AgendaEvents.validate(item) }
+        catch (e: IllegalArgumentException) { showToast(e.message ?: "请检查日程信息"); return }
+        lifecycleScope.launch {
+            runCatching { agendas.save(item) }.onSuccess {
+                showToast("日程已保存"); setResult(Activity.RESULT_OK, Intent().putExtra("date", item.date)); finish()
+            }.onFailure { showToast(it.message ?: "保存失败，请重试") }
         }
     }
 
     private fun confirmDelete() {
+        if (agendaMode) {
+            MaterialAlertDialogBuilder(this).setTitle("删除这项日程？").setNegativeButton("取消", null)
+                .setPositiveButton("删除") { _, _ -> lifecycleScope.launch {
+                    agendaId?.let { agendas.delete(it) }; setResult(Activity.RESULT_OK); finish()
+                } }.show()
+            return
+        }
         MaterialAlertDialogBuilder(this)
             .setTitle("删除这门课程？")
             .setMessage("删除后将从当前课表中移除。")

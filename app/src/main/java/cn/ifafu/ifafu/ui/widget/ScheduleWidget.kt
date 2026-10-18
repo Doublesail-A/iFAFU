@@ -43,7 +43,11 @@ object ScheduleWidget {
     private fun installedIds(context: Context, manager: AppWidgetManager) = providers
         .flatMap { manager.getAppWidgetIds(ComponentName(context, it)).toList() }
     fun restoreClock(context: Context) {
-        WidgetClock.ensure(context, installedIds(context, AppWidgetManager.getInstance(context)).isNotEmpty())
+        val needed = installedIds(context, AppWidgetManager.getInstance(context)).isNotEmpty()
+        WidgetClock.ensure(context, needed)
+        // Any cold process entry can restore the cached frame immediately. This
+        // must not wait for another minute broadcast or initialize repositories.
+        if (needed) updateAll(context, force = true)
     }
     internal fun interactive(context: Context) =
         (context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager).isInteractive

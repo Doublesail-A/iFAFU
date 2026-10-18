@@ -52,8 +52,11 @@ class TimetableActivity : BaseActivity(), View.OnClickListener {
     private val mTimetablePageAdapter: TimetablePageAdapter by lazy {
         TimetablePageAdapter(
             onItemClickListener = { _, item ->
-                val intent = TimetableItemActivity
-                    .intentForCheck(this, item.tag as NewCourse)
+                val intent = when (val target = item.tag) {
+                    is cn.ifafu.ifafu.entity.AgendaItem -> TimetableItemActivity.intentForAgenda(this, target.id)
+                    is NewCourse -> TimetableItemActivity.intentForCheck(this, target)
+                    else -> return@TimetablePageAdapter
+                }
                 startActivityForResult(intent, Constants.ACTIVITY_SYLLABUS_ITEM)
             },
             onItemLongClickListener = { _, _ ->
@@ -97,6 +100,7 @@ class TimetableActivity : BaseActivity(), View.OnClickListener {
         super.onResume()
         contentBinding.root.removeCallbacks(minuteRefresh)
         mTimetablePageAdapter.refreshUrgency()
+        mViewModel.refreshAgenda()
         contentBinding.root.postDelayed(minuteRefresh, 60_000L)
     }
 
@@ -111,6 +115,12 @@ class TimetableActivity : BaseActivity(), View.OnClickListener {
     }
 
     private fun initViewModel() {
+        mViewModel.agendaItems.observe(this) { items ->
+            val week = mTimetablePageAdapter.weekAt(contentBinding.viewPager.currentItem)
+            mTimetablePageAdapter.updateAgenda(items)
+            syncWeekRange()
+            contentBinding.viewPager.setCurrentItem(mTimetablePageAdapter.positionForWeek(week), false)
+        }
         mViewModel.message.observe(this, { snackbar(it) })
         mViewModel.timetableSetting.observe(this, { setSyllabusSetting(it) })
         mViewModel.nextCourseSeed.observe(this) { seed ->
@@ -155,12 +165,13 @@ class TimetableActivity : BaseActivity(), View.OnClickListener {
         })
         mViewModel.openingDay.observe(this, { openingDay ->
             mTimetablePageAdapter.updateOpeningDay(openingDay)
+            syncWeekRange()
             mCurrentWeek = openingDay.getCurrentWeek()
             val week = if (mCurrentWeek <= 0) 1 else mCurrentWeek
-            val position = restoredWeek ?: (week - 1)
+            val position = restoredWeek ?: mTimetablePageAdapter.positionForWeek(week)
             restoredWeek = null
             contentBinding.viewPager.setCurrentItem(position, false)
-            showWeekString(position + 1)
+            showWeekString(mTimetablePageAdapter.weekAt(position))
             mViewModel.refreshCourseThemeSeed()
         })
         mViewModel.timetablePreviews.observe(this, { res ->
@@ -223,12 +234,17 @@ class TimetableActivity : BaseActivity(), View.OnClickListener {
         contentBinding.viewPager.registerOnPageChangeCallback(object : OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
                 drawerBinding.weekSeekBar.value = position.toFloat()
-                showWeekString(position + 1)
+                showWeekString(mTimetablePageAdapter.weekAt(position))
             }
         })
     }
 
     private fun showWeekString(week: Int) {
+        if (week < 1 || week > (mViewModel.timetableSetting.value?.weekCnt ?: 20)) {
+            val date = mTimetablePageAdapter.dateForWeek(week)
+            contentBinding.tbSyllabus.subtitle = date.format(java.time.format.DateTimeFormatter.ofPattern("yyyy年M月d日"))
+            return
+        }
         val weekInChinese = "第${ChineseNumbers.englishNumberToChinese((week.toString()))}周"
         val openingDay = mViewModel.openingDay.value
         if (openingDay == null) {
@@ -248,8 +264,7 @@ class TimetableActivity : BaseActivity(), View.OnClickListener {
     private fun setSyllabusSetting(setting: SyllabusSetting) {
         mTimetablePageAdapter.updateSetting(setting)
         mViewModel.refreshCourseThemeSeed()
-        val maximum = (setting.weekCnt - 1).coerceAtLeast(1).toFloat()
-        drawerBinding.weekSeekBar.valueTo = maximum
+        syncWeekRange()
         drawerBinding.weekSeekBar.isEnabled = setting.weekCnt > 1
     }
 
@@ -275,13 +290,22 @@ class TimetableActivity : BaseActivity(), View.OnClickListener {
         }
     }
 
+    private fun syncWeekRange() {
+        val max = (mTimetablePageAdapter.itemCount - 1).coerceAtLeast(1).toFloat()
+        drawerBinding.weekSeekBar.value = drawerBinding.weekSeekBar.value.coerceAtMost(max)
+        drawerBinding.weekSeekBar.valueTo = max
+    }
+
     private fun addCourse() {
         val option = mPreviewAdapter.getSelected()
         if (option == null) {
             snackbar(WHAT_WRONG_WITH_IFAFU)
             return
         }
-        val intent = TimetableItemActivity.intentForAdd(this, option.year, option.term)
+        val date = mTimetablePageAdapter.dateForWeek(mTimetablePageAdapter.weekAt(contentBinding.viewPager.currentItem))
+        val today = java.time.LocalDate.now()
+        val selectedDate = if (today >= date && today <= date.plusDays(6)) today else date
+        val intent = TimetableItemActivity.intentForAdd(this, option.year, option.term).putExtra("date", selectedDate.toString())
         startActivityForResult(intent, Constants.ACTIVITY_SYLLABUS_ITEM)
     }
 
@@ -289,7 +313,7 @@ class TimetableActivity : BaseActivity(), View.OnClickListener {
      * 返回当前周
      */
     private fun rollbackToCurrent() {
-        contentBinding.viewPager.setCurrentItem((mCurrentWeek - 1).coerceAtLeast(0), true)
+        contentBinding.viewPager.setCurrentItem(mTimetablePageAdapter.positionForWeek(mCurrentWeek), true)
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
@@ -360,6 +384,15 @@ class TimetableActivity : BaseActivity(), View.OnClickListener {
                 }
             } else if (requestCode == Constants.ACTIVITY_SYLLABUS_ITEM) {
                 mViewModel.updateTimetableLocal()
+                data?.getStringExtra("date")?.let { iso ->
+                    lifecycleScope.launch {
+                        val items = mViewModel.agendaItems.value.orEmpty()
+                        mTimetablePageAdapter.updateAgenda(items)
+                        mTimetablePageAdapter.includeDate(java.time.LocalDate.parse(iso))
+                        syncWeekRange()
+                        contentBinding.viewPager.setCurrentItem(mTimetablePageAdapter.positionForDate(java.time.LocalDate.parse(iso)), false)
+                    }
+                }
             } else if (requestCode == Constants.ACTIVITY_SYLLABUS_SETTING) {
                 mViewModel.updateTimetableSetting()
             } else {

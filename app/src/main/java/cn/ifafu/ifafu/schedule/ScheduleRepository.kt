@@ -32,7 +32,7 @@ class ScheduleRepository @Inject constructor(
     fun start() {
         if (observing) return
         observing = true
-        db.invalidationTracker.addObserver(object : InvalidationTracker.Observer("new_course", "Exam", "User", "SyllabusSetting", "to_week", "holiday") {
+        db.invalidationTracker.addObserver(object : InvalidationTracker.Observer("new_course", "Exam", "User", "SyllabusSetting", "to_week", "holiday", "agenda_item", "option") {
             override fun onInvalidated(tables: Set<String>) = refresh()
         })
         scope.launch { timetable.calendarChanges.collect { refresh() } }
@@ -63,7 +63,8 @@ class ScheduleRepository @Inject constructor(
         val selected = db.newCourseDao.getOptions()?.selected
         val y = year?.takeIf { it.isNotBlank() } ?: selected?.year.orEmpty()
         val t = term?.takeIf { it.isNotBlank() } ?: selected?.term.orEmpty()
-        ScheduleSnapshot(account, y + " 学年 · 第 " + t + " 学期", termEvents(y, t))
+        ScheduleSnapshot(account, y + " 学年 · 第 " + t + " 学期",
+            (termEvents(y, t) + db.agendaDao.all(account).map { AgendaEvents.event(it) }).sortedBy { it.start })
     }
 
     suspend fun refreshReminders() = withContext(Dispatchers.IO) {
@@ -71,11 +72,15 @@ class ScheduleRepository @Inject constructor(
             val account = db.userDao.getUsingAccount().orEmpty()
             cn.ifafu.ifafu.ui.widget.ScheduleWidgetStore.clearIfAccountChanged(context, account)
             val terms = db.newCourseDao.getAllCourses(account).map { it.year to it.term }.distinct()
-            val events = terms.flatMap { termEvents(it.first, it.second) } +
-                ScheduleEvents.exams(exams.getAllExamsFromLocal("全部", "全部"))
+            val courseEvents = terms.associateWith { termEvents(it.first, it.second) }
+            val otherEvents = ScheduleEvents.exams(exams.getAllExamsFromLocal("全部", "全部")) +
+                db.agendaDao.all(account).map { AgendaEvents.event(it) }
+            val events = courseEvents.values.flatten() + otherEvents
+            val selected = db.newCourseDao.getOptions()?.selected
+            val widgetEvents = selected?.let { courseEvents[it.year to it.term] }.orEmpty() + otherEvents
             ensureActive()
             if (db.userDao.getUsingAccount().orEmpty() != account) return@withLock
-            cn.ifafu.ifafu.ui.widget.ScheduleWidgetStore.save(context, events, account)
+            cn.ifafu.ifafu.ui.widget.ScheduleWidgetStore.save(context, widgetEvents, account)
             ReminderScheduler.update(context, events, account)
         }
     }

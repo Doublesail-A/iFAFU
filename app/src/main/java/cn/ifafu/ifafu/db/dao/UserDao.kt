@@ -49,6 +49,7 @@ abstract class UserDao {
         deleteTimetableSetting(account)
         deleteExam(account)
         deleteScore(account)
+        deleteAgenda(account)
         val users = getAllUsers()
         if (users.isNotEmpty()) {
             SPUtils.getInstance(Constants.SP_USER_INFO).put("account", users[0].account)
@@ -81,5 +82,8 @@ abstract class UserDao {
 
     @Query("DELETE FROM Score WHERE account=:account")
     protected abstract suspend fun deleteScore(account: String)
+
+    @Query("DELETE FROM agenda_item WHERE account=:account")
+    protected abstract suspend fun deleteAgenda(account: String)
 
 }

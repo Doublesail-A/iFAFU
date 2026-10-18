@@ -4,7 +4,7 @@
     <item
         android:id="@+id/menu_add"
         android:icon="@drawable/ic_m3_add"
-        android:title="@string/add_course"
+        android:title="添加项目"
         app:showAsAction="always" />
     <item
         android:id="@+id/menu_refresh"

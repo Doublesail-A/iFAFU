@@ -7,5 +7,9 @@ public class TimetableItem {
     public int dayOfWeek; //星期（必须）
     public int startNode; //开始节数（必须）
     public int nodeCount; //持续节数（必须）
+    public int startMinute = -1;
+    public int endMinute = -1;
+    public boolean agenda = false;
+    public int customColor;
     public Object tag; //附加信息
 }

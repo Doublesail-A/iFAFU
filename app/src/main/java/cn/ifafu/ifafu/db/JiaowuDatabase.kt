@@ -29,9 +29,10 @@ import cn.ifafu.ifafu.entity.*
         NewCourse::class,
         OptionDO::class,
         FirstWeek::class,
-        Holiday::class
+        Holiday::class,
+        AgendaItem::class
     ],
-    version = 18,
+    version = 19,
     exportSchema = true
 )
 @TypeConverters(
@@ -58,8 +59,16 @@ abstract class JiaowuDatabase : RoomDatabase() {
     abstract val openingDayDao: OpeningDayDao
     abstract val electricityHistoryDao: ElectricityHistoryDao
     abstract val holidayDao: HolidayDao
+    abstract val agendaDao: AgendaDao
 
     companion object {
+        val migration_18_19 = object : Migration(18, 19) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("CREATE TABLE IF NOT EXISTS `agenda_item` (`id` TEXT NOT NULL, `account` TEXT NOT NULL, `title` TEXT NOT NULL, `date` TEXT NOT NULL, `startMinute` INTEGER NOT NULL, `endMinute` INTEGER NOT NULL, `location` TEXT NOT NULL, `notes` TEXT NOT NULL, `color` INTEGER NOT NULL, PRIMARY KEY(`id`))")
+                database.execSQL("CREATE INDEX IF NOT EXISTS `index_agenda_item_account` ON `agenda_item` (`account`)")
+            }
+        }
+
 
         fun getInstance(context: Context): JiaowuDatabase {
             return Room.databaseBuilder(context, JiaowuDatabase::class.java, DATABASE_NAME)
@@ -77,7 +86,8 @@ abstract class JiaowuDatabase : RoomDatabase() {
                     migration_14_15,
                     migration_15_16,
                     migration_16_17,
-                    migration_17_18
+                    migration_17_18,
+                    migration_18_19
                 )
                 .build()
         }

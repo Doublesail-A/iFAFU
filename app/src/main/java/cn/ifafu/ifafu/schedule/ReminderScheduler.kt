@@ -28,7 +28,7 @@ import java.util.Locale
 object ReminderScheduler {
     private const val CALENDAR_RULES_VERSION = 2
     private fun prefs(context: Context) = context.getSharedPreferences("schedule_reminders", Context.MODE_PRIVATE)
-    fun enabled(context: Context, kind: String) = prefs(context).getBoolean(kind, false)
+    fun enabled(context: Context, kind: String) = prefs(context).getBoolean(if (kind == "agenda") "course" else kind, false)
     fun setEnabled(context: Context, kind: String, value: Boolean) {
         prefs(context).edit().putBoolean(kind, value).commit()
         scheduleNext(context)
@@ -131,7 +131,7 @@ object ReminderScheduler {
         val open = PendingIntent.getActivity(context, event.uid.hashCode(), destination,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val time = SimpleDateFormat("HH:mm", Locale.CHINA).format(Date(event.start))
-        val heading = if (event.kind == "test") "提醒测试" else if (exam) "30 分钟后考试" else "15 分钟后上课"
+        val heading = if (event.kind == "test") "提醒测试" else if (exam) "30 分钟后考试" else if (event.kind == "agenda") "15 分钟后开始" else "15 分钟后上课"
         val body = time + " · " + event.title + "\n" + event.location +
             if (exam) "\n" + event.description else ""
         val notification = NotificationCompat.Builder(context, if (exam) "exam_reminders" else "course_reminders")

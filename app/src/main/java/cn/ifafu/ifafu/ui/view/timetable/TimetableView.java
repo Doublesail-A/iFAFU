@@ -39,7 +39,7 @@ import cn.ifafu.ifafu.util.LightColorPool;
  */
 public class TimetableView extends GridLayout {
 
-    private final Map<TimetableItem, TextView> itemViewMap = new HashMap<>();
+    private final Map<TimetableItem, TextView> itemViewMap = new java.util.LinkedHashMap<>();
 
     private final float    dateLayoutHeightWeight = 1.08F;
     private final float    sideLayoutWidthWeight  = 0.72F;
@@ -56,6 +56,59 @@ public class TimetableView extends GridLayout {
     private String[] timeTexts;
     private String[] dateTexts;
     private int todayColumn = -1;
+    private double topRow = 0, bottomRow = 12;
+    private double minuteRow(int minute) {
+        if (timeTexts == null || timeTexts.length == 0) return minute / 60.0;
+        int count = Math.min(config.totalNodeCount, timeTexts.length);
+        int[] starts = new int[count];
+        for (int i = 0; i < count; i++) {
+            String[] text = timeTexts[i].split(":");
+            starts[i] = Integer.parseInt(text[0]) * 60 + Integer.parseInt(text[1]);
+        }
+        if (minute < starts[0]) return (minute - starts[0]) / 45.0;
+        for (int i = 0; i < count - 1; i++) if (minute < starts[i + 1])
+            return i + (minute - starts[i]) / (double) Math.max(1, starts[i + 1] - starts[i]);
+        return count - 1 + (minute - starts[count - 1]) / 45.0;
+    }
+    private float headerHeight() { return (float) (dateLayoutHeightWeight / (dateLayoutHeightWeight + bottomRow - topRow) * getHeight()); }
+    private float rowY(double row) { return headerHeight() + (float) ((row - topRow) / (bottomRow - topRow) * (getHeight() - headerHeight())); }
+    private void place(View view, int left, int top, int right, int bottom) {
+        int width = Math.max(1, right - left), height = Math.max(1, bottom - top);
+        view.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY));
+        view.layout(left, top, left + width, top + height);
+    }
+    @Override protected void onLayout(boolean changed, int l, int t, int r, int b) {
+        super.onLayout(changed, l, t, r, b);
+        topRow = 0; bottomRow = config.totalNodeCount;
+        java.util.List<TimetableItem> items = new java.util.ArrayList<>(itemViewMap.keySet());
+        java.util.List<cn.ifafu.ifafu.ui.timetable.TimetableLanes.Block> blocks = new java.util.ArrayList<>();
+        for (int i = 0; i < items.size(); i++) {
+            TimetableItem item = items.get(i);
+            if (item.startMinute >= 0) {
+                topRow = Math.min(topRow, minuteRow(item.startMinute));
+                bottomRow = Math.max(bottomRow, minuteRow(item.endMinute));
+            }
+            blocks.add(new cn.ifafu.ifafu.ui.timetable.TimetableLanes.Block(i, item.dayOfWeek,
+                item.startMinute >= 0 ? item.startMinute : item.startNode * 60,
+                item.endMinute >= 0 ? item.endMinute : (item.startNode + item.nodeCount) * 60, item.agenda));
+        }
+        float unit = getWidth() / (sideLayoutWidthWeight + 7f), side = unit * sideLayoutWidthWeight;
+        place(cornerTextView, 0, 0, (int) side, (int) headerHeight());
+        for (int i = 0; i < 7; i++) place(weekLayouts[i], (int)(side + i * unit), 0, (int)(side + (i + 1) * unit), (int)headerHeight());
+        for (int i = 0; i < noteLayouts.length; i++) place(noteLayouts[i], 0, (int)rowY(i), (int)side, (int)rowY(i + 1));
+        for (cn.ifafu.ifafu.ui.timetable.TimetableLanes.Placement slot : cn.ifafu.ifafu.ui.timetable.TimetableLanes.arrange(blocks)) {
+            TimetableItem item = items.get(slot.getId()); TextView view = itemViewMap.get(item);
+            double start = item.startMinute >= 0 ? minuteRow(item.startMinute) : item.startNode - 1;
+            double end = item.endMinute >= 0 ? minuteRow(item.endMinute) : start + item.nodeCount;
+            float x = side + (item.dayOfWeek - 1 + slot.getLeft()) * unit;
+            int y1 = (int)rowY(start) + dp1, y2 = (int)rowY(end) - dp1;
+            // Short events remain tappable without extending into the next day's column.
+            y2 = Math.min(getHeight() - dp1, Math.max(y1 + dp10 * 2, y2));
+            if (item.agenda) view.setText(slot.getWidth() < 0.5f || y2 - y1 < dp10 * 4 ? item.name :
+                item.name + (item.address == null || item.address.isEmpty() ? "" : "\n" + item.address));
+            place(view, (int)x + dp1, y1, (int)(x + slot.getWidth() * unit) - dp1, y2);
+        }
+    }
     private final Set<String> urgentItemKeys = new HashSet<>();
 
     //配置类
@@ -284,9 +337,9 @@ public class TimetableView extends GridLayout {
         if (item.address != null && !item.address.isEmpty()) {
             text += "\n" + item.address;
         }
-        int courseColor = config.colorPool.getColor(item.name);
+        int courseColor = item.agenda ? item.customColor : config.colorPool.getColor(item.name);
         itemView.setText(text);
-        itemView.setMaxLines(Math.max(2, Math.min(6, item.nodeCount * 2)));
+        itemView.setMaxLines(item.agenda ? 6 : Math.max(2, Math.min(6, item.nodeCount * 2)));
         itemView.setEllipsize(TextUtils.TruncateAt.END);
         TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
                 itemView,
@@ -297,7 +350,7 @@ public class TimetableView extends GridLayout {
         );
         itemView.setTag(item);
         applyCourseAppearance(item, itemView, courseColor);
-        itemView.setPadding(dp4, dp4, dp4, dp4);
+        itemView.setPadding(item.agenda ? dp1 : dp4, dp4, item.agenda ? dp1 : dp4, dp4);
         itemView.setContentDescription(text);
         if (clickListener != null) {
             itemView.setOnClickListener(v -> clickListener.onClick(v, item));
@@ -324,13 +377,13 @@ public class TimetableView extends GridLayout {
         urgentItemKeys.clear();
         if (keys != null) urgentItemKeys.addAll(keys);
         for (Map.Entry<TimetableItem, TextView> entry : itemViewMap.entrySet()) {
-            int courseColor = config.colorPool.getColor(entry.getKey().name);
+            int courseColor = entry.getKey().agenda ? entry.getKey().customColor : config.colorPool.getColor(entry.getKey().name);
             applyCourseAppearance(entry.getKey(), entry.getValue(), courseColor);
         }
     }
 
     public static String itemKey(TimetableItem item) {
-        return item.name + '|' + item.dayOfWeek + '|' + item.startNode;
+        return item.name + '|' + item.dayOfWeek + '|' + item.startNode + '|' + item.startMinute;
     }
 
     private void applyCourseAppearance(TimetableItem item, TextView view, int courseColor) {
@@ -343,6 +396,9 @@ public class TimetableView extends GridLayout {
                 : config.colorPool instanceof cn.ifafu.ifafu.ui.timetable.MaterialCourseColorPool
                     ? ((cn.ifafu.ifafu.ui.timetable.MaterialCourseColorPool) config.colorPool).getForegroundColor(item.name)
                     : resolveColor(com.google.android.material.R.attr.colorOnSurface, contrastColor(background));
+        if (item.agenda && !urgent) foreground = com.google.android.material.color.utilities.Contrast.ratioOfTones(
+            com.google.android.material.color.utilities.ColorUtils.lstarFromArgb(background), 100) >= com.google.android.material.color.utilities.Contrast.ratioOfTones(
+            com.google.android.material.color.utilities.ColorUtils.lstarFromArgb(background), 0) ? Color.WHITE : Color.BLACK;
         view.setTextColor(foreground);
         view.setBackground(createCourseBackground(background, urgent));
     }
@@ -380,12 +436,12 @@ public class TimetableView extends GridLayout {
 
             if (config.showHorizontalLine) {
                 float totalHeightWeight = dateLayoutHeightWeight + config.totalNodeCount;
-                float perItemHeight = 1F / totalHeightWeight * availableHeight;
+                float perItemHeight = (availableHeight - headerHeight()) / (float)(bottomRow - topRow);
                 //第一条水平分割线的y轴位置
-                float y = dateLayoutHeightWeight / totalHeightWeight * availableHeight;
+                float y = rowY(0);
                 for (int i = 0; i < config.totalNodeCount; i++) {
                     canvas.drawLine(0F, y, availableWidth, y, paint);
-                    y += perItemHeight;
+                    y = rowY(i + 1);
                 }
             }
 
@@ -408,7 +464,7 @@ public class TimetableView extends GridLayout {
     private void initNodeLayout() {
         noteLayouts = new RelativeLayout[config.totalNodeCount];
         RelativeLayout.LayoutParams ilp = new RelativeLayout.LayoutParams(
-                RelativeLayout.LayoutParams.WRAP_CONTENT,
+                RelativeLayout.LayoutParams.MATCH_PARENT,
                 RelativeLayout.LayoutParams.WRAP_CONTENT
         ); // 可复用，无需重复new
         ilp.addRule(RelativeLayout.CENTER_IN_PARENT);
@@ -417,6 +473,9 @@ public class TimetableView extends GridLayout {
             //添加节数TextView
                 TextView nodeTextView = new TextView(getContext());
                 nodeTextView.setId(R.id.id_node_textview);
+                nodeTextView.setMaxLines(1);
+                nodeTextView.setHorizontallyScrolling(false);
+                nodeTextView.setEllipsize(TextUtils.TruncateAt.END);
                 nodeTextView.setGravity(Gravity.CENTER);
                 nodeTextView.setTextColor(config.otherTextColor);
                 nodeTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12F);

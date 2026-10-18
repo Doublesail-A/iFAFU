@@ -146,8 +146,8 @@ class WidgetIntegrationTest {
     @Test fun singleWidgetShowsLongAndStartedLabelsOnOneLine() {
         val midnight = java.util.Calendar.getInstance().apply { clear(); set(2026, 9, 9, 0, 0) }.timeInMillis
         val noon = midnight + 12 * 3600000
-        val scenarios = listOf(Triple(midnight, fixture(start = midnight + 1400 * 60000), "23小时20分后"),
-            Triple(noon, fixture(start = noon - 599000), "已上课9分钟"))
+        val scenarios = listOf(Triple(midnight, fixture(start = midnight + 1400 * 60000), "23小时20分后上课"),
+            Triple(noon, fixture(start = noon - 599000), "1小时26分后下课"))
         for ((now, course, expected) in scenarios) instrumentation.runOnMainSync {
             val colors = ScheduleWidget.palette(context, listOf(course), now)
             val view = ScheduleWidget.render(context, R.layout.timetable_widget, listOf(course), colors, now)
@@ -220,14 +220,46 @@ class WidgetIntegrationTest {
             assertEquals("Coincident refreshes must not send duplicate frames", count, updates.get())
             assertSame("Unchanged schedules must reuse parsed data", ScheduleWidgetStore.load(context), ScheduleWidgetStore.load(context))
             if (inexact) { waitFor("10分钟后上课", 65000); return }
-            waitFor("已上课0分钟", 10000)
-            // A repository refresh during the first ten minutes must not drop this course.
+            waitFor("1小时35分后下课", 10000)
+            // A repository refresh during an ongoing class must retain it until the end.
             ScheduleWidgetStore.save(context, listOf(course), account)
             assertEquals(course.uid, ScheduleWidgetStore.load(context).single().uid)
-            waitFor("已上课1分钟", 65000)
+            waitFor("1小时34分后下课", 65000)
         } finally {
             instrumentation.runOnMainSync { host.stopListening() }
             host.deleteAppWidgetId(id)
+            SPUtils.getInstance(Constants.SP_USER_INFO).put("account", "", true)
+            ScheduleWidgetStore.clearIfAccountChanged(context, "")
+        }
+    }
+
+    @Test fun ongoingClassBeyondTenMinutesHandsOffExactlyAtItsEnd() {
+        org.junit.Assume.assumeTrue(InstrumentationRegistry.getArguments().getString("isolatedWidgetTest") == "true")
+        val account = "widget-end-fixture"
+        SPUtils.getInstance(Constants.SP_USER_INFO).put("account", account, true)
+        val host = AppWidgetHost(context, 9276)
+        val manager = AppWidgetManager.getInstance(context)
+        val id = host.allocateAppWidgetId()
+        var view: android.appwidget.AppWidgetHostView? = null
+        try {
+            assertTrue(manager.bindAppWidgetIdIfAllowed(id, ComponentName(context, SyllabusWidget::class.java)))
+            instrumentation.runOnMainSync { host.startListening(); view = host.createView(context, id, manager.getAppWidgetInfo(id)) }
+            val now = System.currentTimeMillis()
+            val current = fixture(start = now - 20 * 60000).copy(uid = "ongoing-end-test", end = now + 5000)
+            val next = fixture(start = now + 90000).copy(uid = "next-end-test", title = "下一项安排")
+            ScheduleWidgetStore.save(context, listOf(current, next), account)
+            assertEquals(2, ScheduleWidgetStore.load(context).size)
+            fun title(): String {
+                var text = ""
+                instrumentation.runOnMainSync { text = view!!.findViewById<TextView>(R.id.widget_title).text.toString() }
+                return text
+            }
+            assertEquals(current.title, title())
+            val deadline = android.os.SystemClock.elapsedRealtime() + 9000
+            while (title() != next.title && android.os.SystemClock.elapsedRealtime() < deadline) Thread.sleep(100)
+            assertEquals(next.title, title())
+        } finally {
+            instrumentation.runOnMainSync { host.stopListening() }; host.deleteAppWidgetId(id)
             SPUtils.getInstance(Constants.SP_USER_INFO).put("account", "", true)
             ScheduleWidgetStore.clearIfAccountChanged(context, "")
         }
@@ -245,7 +277,7 @@ class WidgetIntegrationTest {
         ScheduleWidgetStore.save(context, listOf(fixture(start = now + 30000), fixture("exam", now + 1800000)), account)
     }
 
-    @Test fun verifyColdWidgetShowsRecentCourseAfterWake() {
+    @Test fun verifyColdWidgetShowsOngoingCourseAfterWake() {
         org.junit.Assume.assumeTrue(InstrumentationRegistry.getArguments().getString("widgetColdVerify") == "true")
         assertTrue(ScheduleWidget.interactive(context))
         val id = context.getSharedPreferences("widget_test", Context.MODE_PRIVATE).getInt("host_id", -1)
@@ -257,7 +289,7 @@ class WidgetIntegrationTest {
                 host.startListening()
                 val view = host.createView(context, id, manager.getAppWidgetInfo(id))
                 assertTrue("Waking must show the already-started course without opening the app",
-                    view.findViewById<TextView>(R.id.widget_countdown).text.toString().startsWith("已上课"))
+                    view.findViewById<TextView>(R.id.widget_countdown).text.toString().endsWith("后下课"))
             }
         } finally { instrumentation.runOnMainSync { host.stopListening() } }
     }

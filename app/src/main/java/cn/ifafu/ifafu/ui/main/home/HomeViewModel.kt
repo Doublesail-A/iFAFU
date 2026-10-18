@@ -38,6 +38,7 @@ data class HomeExamUi(
     val countdown: String,
     val time: String,
     val place: String,
+    val urgent: Boolean = false,
 )
 
 data class HomeUiState(
@@ -58,6 +59,7 @@ private data class CourseSnapshot(
 class HomeViewModel @Inject constructor(
     private val timetableRepository: TimetableRepository,
     private val examRepository: ExamRepository,
+    private val agendaRepository: cn.ifafu.ifafu.schedule.AgendaRepository,
 ) : ViewModel() {
 
     private val _state = MediatorLiveData<HomeUiState>().apply {
@@ -103,80 +105,27 @@ class HomeViewModel @Inject constructor(
     }
 
     private suspend fun loadCourses(): CourseSnapshot {
-        val options = timetableRepository.getTermOptions()
-            ?: return CourseSnapshot(emptyList(), null)
-        val openingDay = timetableRepository.getOpeningDay(
-            options.selected.year,
-            options.selected.term,
-        )
-        val week = openingDay.getCurrentWeek()
-        val setting = timetableRepository.getTimetableSetting()
-        val courses = timetableRepository.getCourses(
-            options.selected.year,
-            options.selected.term,
-            GetCourseStrategy.NETWORK_IF_LOCAL_EMPTY,
-        )
-        val calendar = Calendar.getInstance()
-        val weekday = calendar.get(Calendar.DAY_OF_WEEK)
-        val nowInMinutes = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
-        val today = if (week < 1) emptyList() else courses
-            .asSequence()
-            .filter { it.weekday == weekday && it.weeks.contains(week) }
-            .filter { courseEndInMinutes(it, setting) >= nowInMinutes }
-            .sortedBy { it.beginNode }
-            .take(2)
-            .map { it.toUi(setting, nowInMinutes) }
-            .toList()
-        val next = CourseSchedule.nextCourse(courses, openingDay.getOpeningDay(), setting)
-        return CourseSnapshot(
-            today = today,
-            nextCourseSeed = next?.let {
-                CourseColorPalette.forCourses(Utils.getApp(), courses.map { course -> course.name })
-                    .seedFor(it.name)
-            },
-        )
-    }
-
-    private fun NewCourse.toUi(setting: SyllabusSetting, nowInMinutes: Int): HomeCourseUi {
-        val start = nodeStartInMinutes(beginNode, setting)
-        val end = courseEndInMinutes(this, setting)
-        val location = classroom.ifBlank { "地点待定" }
-        val detail = if (teacher.isBlank()) location else "$location · $teacher"
-        val countdown = if (nowInMinutes >= start) {
-            remainingText(end - nowInMinutes, "下课")
-        } else {
-            remainingText(start - nowInMinutes, "上课")
+        val agenda = agendaRepository.all().map { cn.ifafu.ifafu.schedule.AgendaEvents.event(it) }
+        var seed: Int? = null
+        val lessons = try {
+            val options = timetableRepository.getTermOptions()
+            if (options == null) emptyList() else {
+                val opening = timetableRepository.getOpeningDay(options.selected.year, options.selected.term)
+                val setting = timetableRepository.getTimetableSetting()
+                val courses = timetableRepository.getCourses(options.selected.year, options.selected.term, GetCourseStrategy.NETWORK_IF_LOCAL_EMPTY)
+                val colors = CourseColorPalette.forCourses(Utils.getApp(), courses.map { it.name })
+                seed = CourseSchedule.nextCourse(courses, opening.getOpeningDay(), setting)?.let { colors.seedFor(it.name) }
+                cn.ifafu.ifafu.schedule.ScheduleEvents.courses(courses, opening.getOpeningDay(), setting) { colors.seedFor(it) }
+            }
+        } catch (e: CancellationException) { throw e } catch (_: Exception) { emptyList() }
+        val now = System.currentTimeMillis()
+        val today = cn.ifafu.ifafu.schedule.TodaySchedule.today(lessons + agenda, now).map { event ->
+            val format = SimpleDateFormat("HH:mm", Locale.CHINA)
+            HomeCourseUi(event.title, format.format(Date(event.start)) + "–" + format.format(Date(event.end)),
+                listOf(event.location.ifBlank { "地点待定" }, event.teacher).filter { it.isNotBlank() }.joinToString(" · "),
+                cn.ifafu.ifafu.schedule.TodaySchedule.label(event, now), cn.ifafu.ifafu.schedule.TodaySchedule.urgent(event, now))
         }
-        return HomeCourseUi(
-            name = name,
-            time = "${formatMinutes(start)}–${formatMinutes(end)} · 第${beginNode}–${endNode}节",
-            place = detail,
-            countdown = countdown,
-            urgent = start - nowInMinutes in 1..15,
-        )
-    }
-
-    private fun remainingText(minutes: Int, action: String): String {
-        if (minutes <= 0) return "即将$action"
-        val value = buildString {
-            if (minutes >= 60) append("${minutes / 60}小时")
-            if (minutes % 60 != 0) append("${minutes % 60}分钟")
-        }
-        return "${value}后$action"
-    }
-
-    private fun nodeStartInMinutes(node: Int, setting: SyllabusSetting): Int {
-        val value = setting.beginTime.getOrNull(node) ?: return 0
-        return value / 100 * 60 + value % 100
-    }
-
-    private fun courseEndInMinutes(course: NewCourse, setting: SyllabusSetting): Int {
-        return nodeStartInMinutes(course.endNode, setting) + setting.nodeLength
-    }
-
-    private fun formatMinutes(value: Int): String {
-        if (value <= 0) return "待定"
-        return "%02d:%02d".format(value / 60, value % 60)
+        return CourseSnapshot(today, seed)
     }
 
     private fun updateExam(exams: List<Exam>) {
@@ -207,13 +156,14 @@ class HomeViewModel @Inject constructor(
         }
         val countdownText = when {
             startTime <= 0L -> "时间待定"
-            startTime <= now && (endTime <= 0L || endTime >= now) -> "正在进行"
-            startTime > now -> "还有 ${DateUtils.calcIntervalTime(now, startTime)}"
+            startTime <= now && endTime > now -> cn.ifafu.ifafu.schedule.TodaySchedule.label(cn.ifafu.ifafu.schedule.ScheduleEvents.exams(listOf(this)).first(), now)
+            startTime <= now && endTime <= 0L -> "正在进行"
+            startTime > now -> cn.ifafu.ifafu.schedule.TodaySchedule.label(cn.ifafu.ifafu.schedule.ScheduleEvents.exams(listOf(this)).first(), now)
             else -> "即将更新"
         }
         val location = address.ifBlank { "考场待定" }
         val placeText = if (seatNumber.isBlank()) location else "$location · 座位 $seatNumber"
-        return HomeExamUi(name, countdownText, timeText, placeText)
+        return HomeExamUi(name, countdownText, timeText, placeText, startTime > now && startTime - now <= 30 * 60000L)
     }
 
     private fun createBaseState(): HomeUiState {
