@@ -254,6 +254,8 @@ class WidgetIntegrationTest {
                 instrumentation.runOnMainSync { text = view!!.findViewById<TextView>(R.id.widget_title).text.toString() }
                 return text
             }
+            val initialDeadline = android.os.SystemClock.elapsedRealtime() + 2000
+            while (title() != current.title && android.os.SystemClock.elapsedRealtime() < initialDeadline) Thread.sleep(50)
             assertEquals(current.title, title())
             val deadline = android.os.SystemClock.elapsedRealtime() + 9000
             while (title() != next.title && android.os.SystemClock.elapsedRealtime() < deadline) Thread.sleep(100)

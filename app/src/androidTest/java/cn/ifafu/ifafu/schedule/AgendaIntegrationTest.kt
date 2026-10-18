@@ -32,14 +32,22 @@ class AgendaIntegrationTest {
     @Test fun migrationPreservesCoursesAndAgendaIsAccountScoped() = runBlocking {
         val name = "agenda-migration-test.db"
         context.deleteDatabase(name)
-        var db = Room.databaseBuilder(context, JiaowuDatabase::class.java, name).build()
+        val isolated = object : android.content.ContextWrapper(context) {
+            override fun getApplicationContext(): android.content.Context = this
+            override fun getDatabasePath(ignored: String) = context.getDatabasePath(name)
+            override fun openOrCreateDatabase(ignored: String, mode: Int, factory: android.database.sqlite.SQLiteDatabase.CursorFactory?) =
+                context.openOrCreateDatabase(name, mode, factory)
+            override fun openOrCreateDatabase(ignored: String, mode: Int, factory: android.database.sqlite.SQLiteDatabase.CursorFactory?, handler: android.database.DatabaseErrorHandler?) =
+                context.openOrCreateDatabase(name, mode, factory, handler)
+        }
+        var db = JiaowuDatabase.getInstance(isolated)
         db.newCourseDao.saveCourses(NewCourse(id = 991001, account = "fixture", name = "保留课程", weeks = sortedSetOf(1, 2)))
         db.close()
         // Version 18 has the same other tables; remove only the newly introduced table.
         android.database.sqlite.SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, 0).use {
             it.execSQL("DROP TABLE agenda_item"); it.version = 18
         }
-        db = Room.databaseBuilder(context, JiaowuDatabase::class.java, name).addMigrations(JiaowuDatabase.migration_18_19).build()
+        db = JiaowuDatabase.getInstance(isolated)
         try {
             assertEquals("保留课程", db.newCourseDao.getCourseById(991001)!!.name)
             val item = AgendaItem(account = "fixture", title = "假期自己的日程", date = "2026-10-03", startMinute = 480, endMinute = 540)
@@ -76,6 +84,17 @@ class AgendaIntegrationTest {
 
     @Test fun editorDefaultsToAgendaPreservesCourseFormAndSavesActualFields() = runBlocking {
         org.junit.Assume.assumeTrue(InstrumentationRegistry.getArguments().getString("isolatedAgendaTest") == "true")
+        // L8 shrinks the separate test APK's runtime independently. Keep the date
+        // APIs used by the target editor so its j$.time classes cannot be shadowed
+        // by a partial test copy, even though this test calls the editor indirectly.
+        val date = java.time.LocalDate.now()
+        val time = java.time.LocalTime.now()
+        val zone = java.time.ZoneId.systemDefault()
+        val instant = date.atStartOfDay().plusMinutes((time.hour * 60 + time.minute).toLong()).atZone(zone).toInstant()
+        assertTrue(instant.toEpochMilli() > 0)
+        assertEquals(date, java.time.Instant.ofEpochMilli(instant.toEpochMilli()).atZone(zone).toLocalDate())
+        assertTrue(date.format(java.time.format.DateTimeFormatter.ofPattern("yyyy年M月d日 · EEEE", java.util.Locale.CHINA)).isNotBlank())
+        assertTrue(date.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli() > 0)
         val prefs = SPUtils.getInstance(Constants.SP_USER_INFO)
         val previous = prefs.getString("account", "")
         val account = "agenda-ui-fixture"
