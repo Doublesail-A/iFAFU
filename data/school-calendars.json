@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "checkedOn": "2026-11-05",
+  "checkedOn": "2026-11-06",
   "calendars": [
     {
       "school": "FAFU",
@@ -427,6 +427,12 @@
           "changes": {}
         },
         {
+          "name": "元旦",
+          "from": "2027-01-01",
+          "days": 3,
+          "changes": {}
+        },
+        {
           "name": "寒假",
           "from": "2027-01-21",
           "days": 31,
@@ -450,6 +456,24 @@
       "firstWeek": "2027-02-21",
       "source": "https://jwc.fafu.edu.cn/99/be/c2011a432574/page.htm",
       "holidays": [
+        {
+          "name": "清明节",
+          "from": "2027-04-03",
+          "days": 3,
+          "changes": {}
+        },
+        {
+          "name": "劳动节",
+          "from": "2027-05-01",
+          "days": 5,
+          "changes": {}
+        },
+        {
+          "name": "端午节",
+          "from": "2027-06-09",
+          "days": 1,
+          "changes": {}
+        },
         {
           "name": "暑假",
           "from": "2027-07-01",
